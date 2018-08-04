@@ -1,0 +1,8 @@
+{
+    "oauth": "<oauth token>",
+    "nickname": "<bot's nickname>",
+    "command_prefix": "<command prefix>",
+    "channels": [
+        "<channel1>", "<channel2>"
+    ]
+}
