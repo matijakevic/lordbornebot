@@ -41,8 +41,9 @@ fn forward_to_modules(modules: &Vec<Box<Module>>, message: &Message, client: &mu
     }
 }
 
-fn init_modules(modules: &mut Vec<Box<Module>>) {
-    let gamble_module = Gamble {};
+fn init_modules(config: &Config, modules: &mut Vec<Box<Module>>) {
+    let gamble_module = Gamble::new(&config.database_path);
+
     modules.push(Box::new(gamble_module));
 }
 
@@ -53,15 +54,21 @@ fn load_config() -> Config {
     }
 }
 
+/// Checks whether user row exists in the database. Creates one if it doesn't exist.
+fn check_user(connection: &Connection, user_id: &str) {
+    connection.execute("INSERT OR IGNORE INTO Users (TwitchID) VALUES (?)", &[&user_id]).unwrap();
+}
+
 fn main() {
     let config = load_config();
-    let connection = Connection::open(config.database_path).unwrap();
+
+    let connection = Connection::open(&config.database_path).unwrap();
 
     let mut client = Client::new();
     let parser = Parser::new(&config.command_prefix);
     let mut modules: Vec<Box<Module>> = Vec::new();
 
-    init_modules(&mut modules);
+    init_modules(&config, &mut modules);
 
     client.initialize(&config.oauth, &config.nickname);
     client.join_channels(&config.channels);
@@ -69,8 +76,20 @@ fn main() {
     loop {
         if let Ok(line) = client.read_line() {
             match parser.decode(&line) {
-                Ok(message) => forward_to_modules(&modules, &message, &mut client),
-                Err(e) => {/*println!("{}:{}", e, line)*/}
+                Ok(message) => {
+                    match &message {
+                        Message::Private(privmsg) => {
+                            if let Some(tags) = &privmsg.tags {
+                                check_user(&connection, &tags["user-id"]);
+                            }
+                        }
+                        Message::Command(command) => check_user(&connection, &command.tags["user-id"]),
+                        _ => {}
+                    }
+
+                    forward_to_modules(&modules, &message, &mut client)
+                }
+                Err(e) => { /*println!("{}:{}", e, line)*/ }
             }
         }
     }
