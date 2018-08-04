@@ -2,6 +2,7 @@
     "oauth": "<oauth token>",
     "nickname": "<bot's nickname>",
     "command_prefix": "<command prefix>",
+    "database_path": "<SQLite database file path>",
     "channels": [
         "<channel1>", "<channel2>"
     ]

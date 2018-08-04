@@ -15,7 +15,7 @@ impl Client {
         Client {
             reader: BufReader::new(stream.try_clone().unwrap()),
             writer: BufWriter::new(stream.try_clone().unwrap()),
-            stream: stream,
+            stream,
         }
     }
 
@@ -26,11 +26,6 @@ impl Client {
         self.flush();
     }
 
-    /// Helper method for quickly sending an IRC private message.
-    pub fn private_message(&mut self, channel: &str, text: &str) {
-        self.send_line(&format!("PRIVMSG #{} :{}", channel, text));
-    }
-
     fn flush(&mut self) {
         self.writer.flush().unwrap();
     }
@@ -39,13 +34,23 @@ impl Client {
         self.send_line(&format!("JOIN #{}", channel));
     }
 
-    // TODO: re-write on failed write
-    pub fn send_line(&mut self, line: &str) {
-        write!(self.writer, "{}\r\n", line).unwrap();
+    pub fn join_channels(&mut self, channels: &Vec<String>) {
+        for channel in channels {
+            self.send_line_no_flush(&format!("JOIN #{}", channel));
+        }
+
         self.flush();
     }
 
-    // TODO: re-read on failed read
+    pub fn send_line(&mut self, line: &str) {
+        self.send_line_no_flush(line);
+        self.flush();
+    }
+
+    pub fn send_line_no_flush(&mut self, line: &str) {
+        write!(self.writer, "{}\r\n", line).unwrap();
+    }
+
     pub fn read_line(&mut self) -> io::Result<String> {
         let mut line = String::new();
 

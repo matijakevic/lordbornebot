@@ -14,6 +14,22 @@ pub struct PrivateMessage {
     pub text: String,
 }
 
+#[macro_export]
+macro_rules! privmsg {
+    ($channel:expr, $fmt:expr) => ($crate::twitch::parser::Message::Private(PrivateMessage {
+        tags: None,
+        sender: None,
+        text: $fmt,
+        channel: $channel.to_string()
+    }));
+    ($channel:expr, $fmt:expr, $($arg:tt)*) => ($crate::twitch::parser::Message::Private($crate::twitch::parser::PrivateMessage {
+        tags: None,
+        sender: None,
+        text: format!($fmt, $($arg)*),
+        channel: $channel.to_string()
+    }));
+}
+
 pub struct Command {
     pub tags: HashMap<String, String>,
     pub channel: String,
@@ -31,8 +47,8 @@ pub struct Parser<'a> {
 impl<'a> Parser<'a> {
     pub fn new(command_prefix: &str) -> Parser {
         Parser {
-            command_prefix: command_prefix,
-            parse_regex: Regex::new("^(?:@([^ ]*) +)(?::([^ ]+) +)([^ ]+)(?: +([^: ]+[^ ]*(?: +[^: ]+[^ ]*)*))?(?: +:(.*))?[\r\n]*$").unwrap()
+            command_prefix,
+            parse_regex: Regex::new("^(?:@([^ ]*) +)(?::([^ ]+) +)([^ ]+)(?: +([^: ]+[^ ]*(?: +[^: ]+[^ ]*)*))?(?: +:(.*))?[\r\n]*$").unwrap(),
         }
     }
 
@@ -47,7 +63,6 @@ impl<'a> Parser<'a> {
         return map;
     }
 
-    // TODO: Add custom error types
     pub fn decode(&self, line: &str) -> Result<Message, &'static str> {
         if let Some(captures) = self.parse_regex.captures(line) {
             match captures.get(3).unwrap().as_str() {
@@ -61,7 +76,7 @@ impl<'a> Parser<'a> {
                         let text = text.trim_left_matches(">>");
                         let tokens: Vec<&str> = text.split(" ").collect();
 
-                        if tokens.len() >= 1 {
+                        if tokens.len() >= 1 && !tokens[0].is_empty() {
                             let name = tokens[0].to_string();
                             let mut raw_args = None;
                             let mut args: Option<Vec<String>> = None;
@@ -72,12 +87,12 @@ impl<'a> Parser<'a> {
                             }
 
                             return Ok(Message::Command(Command {
-                                tags: tags,
+                                tags,
                                 sender: sender.to_string(),
                                 channel: channel.to_string(),
-                                name: name,
-                                raw_args: raw_args,
-                                args: args
+                                name,
+                                raw_args,
+                                args,
                             }));
                         }
 
@@ -95,13 +110,13 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Err("Could not decode this message")
+        Err("Cannot decode this message")
     }
 
-    pub fn encode(message: Message) -> Result<String, &'static str> {
+    pub fn encode(message: &Message) -> Result<String, &'static str> {
         match message {
             Message::Private(privmsg) => {
-                return Ok(format!("PRIVMSG #{} :{}", privmsg.channel, privmsg.text))
+                return Ok(format!("PRIVMSG #{} :{}", privmsg.channel, privmsg.text));
             }
             _ => return Err("Cannot encode this type of message"),
         }
