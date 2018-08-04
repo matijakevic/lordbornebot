@@ -1,4 +1,5 @@
-# lordbornebot
+![Logo](https://i.nuuls.com/8HeUt.png)
+
 A Twitch chat bot written in Rust
 
 ## How to run
