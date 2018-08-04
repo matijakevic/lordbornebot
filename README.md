@@ -1,4 +1,4 @@
-![Logo](https://i.nuuls.com/8HeUt.png)
+![Logo](https://i.nuuls.com/9BHHC.png)
 
 A Twitch chat bot written in Rust
 
