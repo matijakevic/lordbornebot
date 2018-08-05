@@ -11,4 +11,4 @@ A Twitch chat bot written in Rust
 
 ## Module system
 1. Implement modules::Module trait for some type (struct for example).
-2. Construct and add your type (Boxed) using init_modules functions in main.rs.
+2. Construct and add your type (Boxed) using init_modules function in main.rs.
