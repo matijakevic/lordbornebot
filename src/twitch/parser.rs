@@ -16,10 +16,10 @@ pub struct PrivateMessage {
 
 #[macro_export]
 macro_rules! privmsg {
-    ($channel:expr, $fmt:expr) => ($crate::twitch::parser::Message::Private(PrivateMessage {
+    ($channel:expr, $fmt:expr) => ($crate::twitch::parser::Message::Private($crate::twitch::parser::PrivateMessage {
         tags: None,
         sender: None,
-        text: $fmt,
+        text: $fmt.to_string(),
         channel: $channel.to_string()
     }));
     ($channel:expr, $fmt:expr, $($arg:tt)*) => ($crate::twitch::parser::Message::Private($crate::twitch::parser::PrivateMessage {
