@@ -8,23 +8,23 @@ pub enum Message {
 }
 
 pub struct PrivateMessage {
-    pub tags: Option<HashMap<String, String>>,
+    pub tags: HashMap<String, String>,
     pub channel: String,
-    pub sender: Option<String>,
+    pub sender: String,
     pub text: String,
 }
 
 #[macro_export]
 macro_rules! privmsg {
     ($channel:expr, $fmt:expr) => ($crate::twitch::parser::Message::Private($crate::twitch::parser::PrivateMessage {
-        tags: None,
-        sender: None,
+        tags: $crate::std::collections::new(),
+        sender: String::new(),
         text: $fmt.to_string(),
         channel: $channel.to_string()
     }));
     ($channel:expr, $fmt:expr, $($arg:tt)*) => ($crate::twitch::parser::Message::Private($crate::twitch::parser::PrivateMessage {
-        tags: None,
-        sender: None,
+        tags: $crate::std::collections::HashMap::new(),
+        sender: String::new(),
         text: format!($fmt, $($arg)*),
         channel: $channel.to_string()
     }));
@@ -100,8 +100,8 @@ impl<'a> Parser<'a> {
                     }
 
                     return Ok(Message::Private(PrivateMessage {
-                        tags: Some(tags),
-                        sender: Some(sender.to_string()),
+                        tags: tags,
+                        sender: sender.to_string(),
                         channel: channel.to_string(),
                         text: text.to_string(),
                     }));

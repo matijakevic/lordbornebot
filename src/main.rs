@@ -94,9 +94,7 @@ fn main() {
             match parser.decode(&line) {
                 Ok(message) => {
                     match &message {
-                        Message::Private(privmsg) => if let Some(tags) = &privmsg.tags {
-                            check_user(&connection, &tags["user-id"], &tags["display-name"]);
-                        },
+                        Message::Private(privmsg) => check_user(&connection, &privmsg.tags["user-id"], &privmsg.tags["display-name"]),
                         Message::Command(command) => check_user(
                             &connection,
                             &command.tags["user-id"],

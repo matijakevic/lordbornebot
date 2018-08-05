@@ -89,14 +89,10 @@ impl Module for Shapes {
                 };
 
                 if finished {
-                    if let Some(tags) = &privmsg.tags {
-                        let curr_points = self.get_points(&tags["user-id"]);
-                        let new_points = curr_points + 100;
-                        self.set_points(&tags["user-id"], new_points);
-                        if let Some(tags) = &privmsg.tags {
-                            return Some(privmsg!(&privmsg.channel, "{} completed the {} E shape, won 100 points and now has {} points PagChomp", &tags["display-name"], &token, new_points));
-                        }
-                    }
+                    let curr_points = self.get_points(&privmsg.tags["user-id"]);
+                    let new_points = curr_points + 100;
+                    self.set_points(&privmsg.tags["user-id"], new_points);
+                    return Some(privmsg!(&privmsg.channel, "{} completed the {} E shape, won 100 points and now has {} points PagChomp", &privmsg.tags["display-name"], &token, new_points));
                 }
 
                 return None;
