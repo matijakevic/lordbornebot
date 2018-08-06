@@ -6,19 +6,25 @@ extern crate serde;
 extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate log;
+extern crate env_logger;
 
 #[macro_use]
 mod twitch;
+mod database;
 mod modules;
 mod util;
 
 use modules::gamble::Gamble;
+use modules::points::Points;
 use modules::rpg::RPG;
 use modules::shapes::Shapes;
 use modules::Module;
 use rusqlite::Connection;
 use std::env::var_os;
 use std::ffi::OsString;
+use std::path::PathBuf;
 use twitch::client::Client;
 use twitch::parser::{Message, Parser};
 use util::load_json_from_file;
@@ -28,7 +34,7 @@ struct Config {
     oauth: String,
     nickname: String,
     command_prefix: String,
-    database_path: String,
+    database_path: PathBuf,
     channels: Vec<String>,
 }
 
@@ -44,10 +50,12 @@ fn forward_to_modules(modules: &mut Vec<Box<Module>>, message: &Message, client:
 }
 
 fn init_modules(config: &Config, modules: &mut Vec<Box<Module>>) {
+    let points_module = Points::new(&config.database_path);
     let gamble_module = Gamble::new(&config.database_path);
     let shapes_module = Shapes::new(&config.database_path);
     let rpg_module = RPG::new(&config.database_path);
 
+    modules.push(Box::new(points_module));
     modules.push(Box::new(gamble_module));
     modules.push(Box::new(shapes_module));
     modules.push(Box::new(rpg_module));
@@ -69,13 +77,15 @@ fn load_config() -> Config {
 fn check_user(connection: &Connection, user_id: &str, username: &str) {
     connection
         .execute(
-            "INSERT OR IGNORE INTO Users (TwitchID, Username) VALUES (?, ?)",
+            "INSERT OR IGNORE INTO Users (ID, Username) VALUES (?, ?)",
             &[&user_id, &username],
         )
         .unwrap();
 }
 
 fn main() {
+    env_logger::init();
+
     let config = load_config();
 
     let connection = Connection::open(&config.database_path).unwrap();
@@ -94,7 +104,11 @@ fn main() {
             match parser.decode(&line) {
                 Ok(message) => {
                     match &message {
-                        Message::Private(privmsg) => check_user(&connection, &privmsg.tags["user-id"], &privmsg.tags["display-name"]),
+                        Message::Private(privmsg) => check_user(
+                            &connection,
+                            &privmsg.tags["user-id"],
+                            &privmsg.tags["display-name"],
+                        ),
                         Message::Command(command) => check_user(
                             &connection,
                             &command.tags["user-id"],
@@ -105,7 +119,7 @@ fn main() {
 
                     forward_to_modules(&mut modules, &message, &mut client)
                 }
-                Err(e) => println!("{}:{}", e, line),
+                Err(e) => warn!("{}:{}", e, line),
             }
         }
     }

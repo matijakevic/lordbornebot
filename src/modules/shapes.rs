@@ -1,10 +1,8 @@
-use rusqlite::Connection;
-use twitch::parser::Message;
 use modules::Module;
-use std::path::Path;
-use twitch::parser::Command;
-use rand::random;
+use rusqlite::Connection;
 use std::collections::HashMap;
+use std::path::Path;
+use twitch::parser::Message;
 
 struct ShapeData {
     stage: i32,
@@ -23,7 +21,7 @@ pub struct Shapes {
 }
 
 impl Shapes {
-    pub fn new(db_path: &str) -> Shapes {
+    pub fn new(db_path: &Path) -> Shapes {
         Shapes {
             connection: Connection::open(db_path).unwrap(),
             channel_shape: HashMap::new(),
@@ -31,13 +29,22 @@ impl Shapes {
     }
 
     fn get_points(&self, id: &str) -> i32 {
-        self.connection.query_row("SELECT Points FROM `Users` WHERE TwitchID=? LIMIT 1", &[&id], |row| {
-            row.get(0)
-        }).unwrap()
+        self.connection
+            .query_row(
+                "SELECT Points FROM `Users` WHERE TwitchID=? LIMIT 1",
+                &[&id],
+                |row| row.get(0),
+            )
+            .unwrap()
     }
 
     fn set_points(&self, id: &str, points: i32) {
-        self.connection.execute("UPDATE `Users` SET Points=? WHERE TwitchID=?", &[&points, &id]).unwrap();
+        self.connection
+            .execute(
+                "UPDATE `Users` SET Points=? WHERE TwitchID=?",
+                &[&points, &id],
+            )
+            .unwrap();
     }
 }
 
@@ -49,15 +56,23 @@ impl Module for Shapes {
 
                 let mut token = String::new();
                 let finished = {
-                    let instance = self.channel_shape.entry(privmsg.channel.clone()).or_insert(ShapeData { stage: 0, token: String::new() });
+                    let instance = self.channel_shape.entry(privmsg.channel.clone()).or_insert(
+                        ShapeData {
+                            stage: 0,
+                            token: String::new(),
+                        },
+                    );
 
                     match instance.stage {
-                        0 => if tokens.len() == 3 && tokens[0] == tokens[1] && tokens[1] == tokens[2] {
-                            instance.token = tokens[0].to_string();
-                            instance.stage += 1;
-                            false
-                        } else {
-                            false
+                        0 => {
+                            if tokens.len() == 3 && tokens[0] == tokens[1] && tokens[1] == tokens[2]
+                            {
+                                instance.token = tokens[0].to_string();
+                                instance.stage += 1;
+                                false
+                            } else {
+                                false
+                            }
                         }
                         1 | 3 => if tokens.len() == 1 && tokens[0] == instance.token {
                             instance.stage += 1;
@@ -65,15 +80,23 @@ impl Module for Shapes {
                         } else {
                             instance.reset();
                             false
-                        }
-                        2 => if tokens.len() == 2 && tokens[0] == tokens[1] && tokens[0] == instance.token {
+                        },
+                        2 => if tokens.len() == 2
+                            && tokens[0] == tokens[1]
+                            && tokens[0] == instance.token
+                        {
                             instance.stage += 1;
                             false
                         } else {
                             instance.reset();
                             false
-                        }
-                        4 => if tokens.len() == 3 && tokens[0] == tokens[1] && tokens[1] == tokens[2] && tokens[0] == instance.token && tokens[1] == instance.token {
+                        },
+                        4 => if tokens.len() == 3
+                            && tokens[0] == tokens[1]
+                            && tokens[1] == tokens[2]
+                            && tokens[0] == instance.token
+                            && tokens[1] == instance.token
+                        {
                             instance.reset();
                             token = instance.token.clone();
                             true
@@ -97,7 +120,7 @@ impl Module for Shapes {
 
                 return None;
             }
-            _ => return None
+            _ => return None,
         }
     }
 }

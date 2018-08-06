@@ -35,8 +35,8 @@ pub struct Command {
     pub channel: String,
     pub sender: String,
     pub name: String,
-    pub raw_args: Option<String>,
-    pub args: Option<Vec<String>>,
+    pub raw_args: String,
+    pub args: Vec<String>,
 }
 
 pub struct Parser<'a> {
@@ -78,12 +78,12 @@ impl<'a> Parser<'a> {
 
                         if tokens.len() >= 1 && !tokens[0].is_empty() {
                             let name = tokens[0].to_string();
-                            let mut raw_args = None;
-                            let mut args: Option<Vec<String>> = None;
+                            let mut raw_args = String::new();
+                            let mut args = Vec::new();
 
                             if tokens.len() > 1 {
-                                raw_args = Some((&text[text.find(" ").unwrap()..]).to_string());
-                                args = Some(tokens[1..].into_iter().map(|s| s.to_string()).collect());
+                                raw_args = (&text[text.find(" ").unwrap()..]).to_string();
+                                args = tokens[1..].into_iter().map(|s| s.to_string()).collect();
                             }
 
                             return Ok(Message::Command(Command {
@@ -118,7 +118,7 @@ impl<'a> Parser<'a> {
             Message::Private(privmsg) => {
                 return Ok(format!("PRIVMSG #{} :{}", privmsg.channel, privmsg.text));
             }
-            _ => return Err("Cannot encode this type of message"),
+            _ => return Err("Cannot encode this message"),
         }
     }
 }

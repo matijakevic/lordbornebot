@@ -1,6 +1,7 @@
 pub mod gamble;
-pub mod shapes;
+pub mod points;
 pub mod rpg;
+pub mod shapes;
 
 use twitch::parser::Message;
 
