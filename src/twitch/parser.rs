@@ -30,6 +30,12 @@ macro_rules! privmsg {
     }));
 }
 
+#[macro_export]
+macro_rules! whisper {
+    ($user:expr, $fmt:expr) => (privmsg!("jtv", concat!("/w {} ", $fmt), $user));
+    ($user:expr, $fmt:expr, $($arg:tt)*) => (privmsg!("jtv", concat!("/w {} ", $fmt), $user, $($arg)*));
+}
+
 pub struct Command {
     pub tags: HashMap<String, String>,
     pub channel: String,

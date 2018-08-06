@@ -1,3 +1,4 @@
+use database::points::{get_points, set_points};
 use modules::Module;
 use rusqlite::Connection;
 use std::collections::HashMap;
@@ -26,25 +27,6 @@ impl Shapes {
             connection: Connection::open(db_path).unwrap(),
             channel_shape: HashMap::new(),
         }
-    }
-
-    fn get_points(&self, id: &str) -> i32 {
-        self.connection
-            .query_row(
-                "SELECT Points FROM `Users` WHERE TwitchID=? LIMIT 1",
-                &[&id],
-                |row| row.get(0),
-            )
-            .unwrap()
-    }
-
-    fn set_points(&self, id: &str, points: i32) {
-        self.connection
-            .execute(
-                "UPDATE `Users` SET Points=? WHERE TwitchID=?",
-                &[&points, &id],
-            )
-            .unwrap();
     }
 }
 
@@ -112,10 +94,22 @@ impl Module for Shapes {
                 };
 
                 if finished {
-                    let curr_points = self.get_points(&privmsg.tags["user-id"]);
-                    let new_points = curr_points + 100;
-                    self.set_points(&privmsg.tags["user-id"], new_points);
-                    return Some(privmsg!(&privmsg.channel, "{} completed the {} E shape, won 100 points and now has {} points PagChomp", &privmsg.tags["display-name"], &token, new_points));
+                    match get_points(&self.connection, &privmsg.tags["user-id"]) {
+                        Ok(curr_points) => {
+                            let new_points = curr_points + 100;
+                            match set_points(&self.connection, &privmsg.tags["user-id"], new_points) {
+                                Ok(_) => return Some(privmsg!(&privmsg.channel, "{} completed the {} E shape, won 100 points and now has {} points PagChomp", &privmsg.tags["display-name"], &token, new_points)),
+                                Err(e) => {
+                                    warn!("{}", e);
+                                    return None;
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            warn!("{}", e);
+                            return None;
+                        }
+                    }
                 }
 
                 return None;

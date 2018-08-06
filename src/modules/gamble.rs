@@ -41,36 +41,37 @@ impl Gamble {
         };
 
         if amount <= 0 {
-            return Some(privmsg!(
-                &command.channel,
-                "{}, enter a positive amount of points.",
+            return Some(whisper!(
+                &command.tags["display-name"],
+                "{}, please enter a positive amount of points.",
                 &command.tags["display-name"]
             ));
         }
 
         if amount <= curr_points {
-            if random::<f32>() > 0.5 {
-                let new_points = curr_points + amount;
-                set_points(&self.connection, &command.tags["user-id"], new_points);
-                return Some(privmsg!(
-                    &command.channel,
-                    "{} has won and now has {} points.",
-                    &command.tags["display-name"],
-                    new_points
-                ));
+            let new_points = if random::<f32>() > 0.5 {
+                curr_points + amount
             } else {
-                let new_points = curr_points - amount;
-                set_points(&self.connection, &command.tags["user-id"], new_points);
-                return Some(privmsg!(
-                    &command.channel,
-                    "{} has lost and now has {} points.",
-                    &command.tags["display-name"],
-                    new_points
-                ));
+                curr_points - amount
+            };
+
+            match set_points(&self.connection, &command.tags["user-id"], new_points) {
+                Ok(_) => {
+                    return Some(privmsg!(
+                        &command.channel,
+                        "{} has lost and now has {} points.",
+                        &command.tags["display-name"],
+                        new_points
+                    ));
+                }
+                Err(e) => {
+                    warn!("{}", e);
+                    return None;
+                }
             }
         } else {
-            return Some(privmsg!(
-                &command.channel,
+            return Some(whisper!(
+                &command.tags["display-name"],
                 "{}, you don't have enough points for this roulette.",
                 &command.tags["display-name"]
             ));
