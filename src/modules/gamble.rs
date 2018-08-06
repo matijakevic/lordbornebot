@@ -1,4 +1,4 @@
-use database::points::{get_points, set_points};
+use data::points::{get_points, set_points};
 use modules::Module;
 use rand::random;
 use rusqlite::Connection;
@@ -48,21 +48,33 @@ impl Gamble {
         }
 
         if amount <= curr_points {
-            let new_points = if random::<f32>() > 0.5 {
-                curr_points + amount
+            // Have to do it like this until custom message interpolation/templating system.
+            let (new_points, message) = if random::<f32>() > 0.5 {
+                let new_points = curr_points - amount;
+                (
+                    new_points,
+                    Some(privmsg!(
+                        &privmsg.channel,
+                        "{} has lost and now has {} points. FeelsWeirdMan",
+                        &privmsg.tags["display-name"],
+                        new_points
+                    )),
+                )
             } else {
-                curr_points - amount
+                let new_points = curr_points + amount;
+                (
+                    new_points,
+                    Some(privmsg!(
+                        &privmsg.channel,
+                        "{} has won and now has {} points. PagChomp",
+                        &privmsg.tags["display-name"],
+                        new_points
+                    )),
+                )
             };
 
             match set_points(&self.connection, &privmsg.tags["user-id"], new_points) {
-                Ok(_) => {
-                    return Some(privmsg!(
-                        &privmsg.channel,
-                        "{} has lost and now has {} points.",
-                        &privmsg.tags["display-name"],
-                        new_points
-                    ));
-                }
+                Ok(_) => return message,
                 Err(e) => {
                     warn!("{}", e);
                     return None;

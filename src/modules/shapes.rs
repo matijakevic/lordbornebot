@@ -1,4 +1,4 @@
-use database::points::{get_points, set_points};
+use data::points::{get_points, set_points};
 use modules::Module;
 use rusqlite::Connection;
 use std::collections::HashMap;
@@ -98,7 +98,7 @@ impl Module for Shapes {
                         Ok(curr_points) => {
                             let new_points = curr_points + 100;
                             match set_points(&self.connection, &privmsg.tags["user-id"], new_points) {
-                                Ok(_) => return Some(privmsg!(&privmsg.channel, "{} completed the {} E shape, won 100 points and now has {} points PagChomp", &privmsg.tags["display-name"], &token, new_points)),
+                                Ok(_) => return Some(privmsg!(&privmsg.channel, "{} completed the {} E shape, won 100 points and now has {} points. PagChomp", &privmsg.tags["display-name"], &token, new_points)),
                                 Err(e) => {
                                     warn!("{}", e);
                                     return None;

@@ -1,4 +1,4 @@
-use database::points::{get_points, get_points_by_username};
+use data::points::{get_points, get_points_by_username};
 use modules::Module;
 use rusqlite::Connection;
 use std::path::Path;

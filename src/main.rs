@@ -12,11 +12,11 @@ extern crate env_logger;
 
 #[macro_use]
 mod twitch;
-mod database;
+mod data;
 mod modules;
 mod util;
 
-use database::users::check_user;
+use data::users::check_user;
 use modules::gamble::Gamble;
 use modules::points::Points;
 use modules::rpg::RPG;
