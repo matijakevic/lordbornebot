@@ -4,7 +4,7 @@ use std::collections::HashMap;
 pub enum Message {
     Unknown,
     Private(PrivateMessage),
-    Command(Command),
+    Command(PrivateMessage, CommandData),
 }
 
 pub struct PrivateMessage {
@@ -36,10 +36,7 @@ macro_rules! whisper {
     ($user:expr, $fmt:expr, $($arg:tt)*) => (privmsg!("jtv", concat!("/w {} ", $fmt), $user, $($arg)*));
 }
 
-pub struct Command {
-    pub tags: HashMap<String, String>,
-    pub channel: String,
-    pub sender: String,
+pub struct CommandData {
     pub name: String,
     pub raw_args: String,
     pub args: Vec<String>,
@@ -92,14 +89,19 @@ impl<'a> Parser<'a> {
                                 args = tokens[1..].into_iter().map(|s| s.to_string()).collect();
                             }
 
-                            return Ok(Message::Command(Command {
-                                tags,
-                                sender: sender.to_string(),
-                                channel: channel.to_string(),
-                                name,
-                                raw_args,
-                                args,
-                            }));
+                            return Ok(Message::Command(
+                                PrivateMessage {
+                                    tags,
+                                    sender: sender.to_string(),
+                                    channel: channel.to_string(),
+                                    text: text.to_string(),
+                                },
+                                CommandData {
+                                    name,
+                                    raw_args,
+                                    args,
+                                },
+                            ));
                         }
 
                         return Err("No command name provided");

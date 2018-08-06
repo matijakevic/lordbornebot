@@ -16,6 +16,7 @@ mod database;
 mod modules;
 mod util;
 
+use database::users::check_user;
 use modules::gamble::Gamble;
 use modules::points::Points;
 use modules::rpg::RPG;
@@ -73,16 +74,6 @@ fn load_config() -> Config {
     }
 }
 
-/// Checks whether user row exists in the database. Creates one if it doesn't exist.
-fn check_user(connection: &Connection, user_id: &str, username: &str) {
-    connection
-        .execute(
-            "INSERT OR IGNORE INTO Users (ID, Username) VALUES (?, ?)",
-            &[&user_id, &username],
-        )
-        .unwrap();
-}
-
 fn main() {
     env_logger::init();
 
@@ -104,16 +95,20 @@ fn main() {
             match parser.decode(&line) {
                 Ok(message) => {
                     match &message {
-                        Message::Private(privmsg) => check_user(
-                            &connection,
-                            &privmsg.tags["user-id"],
-                            &privmsg.tags["display-name"],
-                        ),
-                        Message::Command(command) => check_user(
-                            &connection,
-                            &command.tags["user-id"],
-                            &command.tags["display-name"],
-                        ),
+                        Message::Private(privmsg) => {
+                            check_user(
+                                &connection,
+                                &privmsg.tags["user-id"],
+                                &privmsg.tags["display-name"],
+                            ).unwrap();
+                        }
+                        Message::Command(privmsg, _) => {
+                            check_user(
+                                &connection,
+                                &privmsg.tags["user-id"],
+                                &privmsg.tags["display-name"],
+                            ).unwrap();
+                        }
                         _ => {}
                     }
 

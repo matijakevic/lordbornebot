@@ -37,7 +37,7 @@ impl RPG {
 
 impl Module for RPG {
     fn handle_message(&mut self, message: &Message) -> Option<Message> {
-        if let Message::Command(command) = message {
+        if let Message::Command(privmsg, command) = message {
             match command.name.as_ref() {
                 "create" => {
                     let params = &command.args;
@@ -47,17 +47,17 @@ impl Module for RPG {
                                 let sum = vitality + strength + dexterity;
 
                                 if sum != 10 {
-                                    return Some(privmsg!(&command.channel, "{}, you have to allocate 10 points, but you've allocated {}.", command.tags["display-name"], sum));
+                                    return Some(privmsg!(&privmsg.channel, "{}, you have to allocate 10 points, but you've allocated {}.", privmsg.tags["display-name"], sum));
                                 } else {
                                     match self.create_player(
-                                        &command.tags["user-id"],
+                                        &privmsg.tags["user-id"],
                                         (vitality, strength, dexterity),
                                     ) {
                                         Ok(()) => {
                                             return Some(privmsg!(
-                                                &command.channel,
+                                                &privmsg.channel,
                                                 "Created a new player for {}!",
-                                                command.tags["display-name"]
+                                                privmsg.tags["display-name"]
                                             ));
                                         }
                                         Err(e) => warn!("{}", e),
@@ -68,9 +68,9 @@ impl Module for RPG {
                         }
                     } else {
                         return Some(privmsg!(
-                            &command.channel,
+                            &privmsg.channel,
                             "{}, command usage: >>create <vitality> <strength> <dexterity>",
-                            command.tags["display-name"]
+                            privmsg.tags["display-name"]
                         ));
                     }
                 }

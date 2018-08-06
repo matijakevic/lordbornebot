@@ -2,8 +2,7 @@ use database::points::{get_points, get_points_by_username};
 use modules::Module;
 use rusqlite::Connection;
 use std::path::Path;
-use twitch::parser::Command;
-use twitch::parser::Message;
+use twitch::parser::{CommandData, Message, PrivateMessage};
 
 pub struct Points {
     connection: Connection,
@@ -16,11 +15,11 @@ impl Points {
         }
     }
 
-    fn points_command(&self, command: &Command) -> Option<Message> {
+    fn points_command(&self, privmsg: &PrivateMessage, command: &CommandData) -> Option<Message> {
         let args = &command.args;
 
         if args.len() < 1 {
-            let points = match get_points(&self.connection, &command.tags["user-id"]) {
+            let points = match get_points(&self.connection, &privmsg.tags["user-id"]) {
                 Ok(points) => points,
                 Err(e) => {
                     warn!("{}", e);
@@ -29,27 +28,27 @@ impl Points {
             };
 
             return Some(privmsg!(
-                &command.channel,
+                &privmsg.channel,
                 "{}, you have {} points.",
-                &command.tags["display-name"],
+                &privmsg.tags["display-name"],
                 points
             ));
         } else {
             match get_points_by_username(&self.connection, &args[0]) {
                 Ok(points) => {
                     return Some(privmsg!(
-                        &command.channel,
+                        &privmsg.channel,
                         "{}, {} has {} points.",
-                        &command.tags["display-name"],
+                        &privmsg.tags["display-name"],
                         args[0],
                         points
                     ))
                 }
                 Err(_) => {
                     return Some(privmsg!(
-                        &command.channel,
+                        &privmsg.channel,
                         "{}, that user doesn't exist yet in the database.",
-                        &command.tags["display-name"]
+                        &privmsg.tags["display-name"]
                     ))
                 }
             }
@@ -60,8 +59,8 @@ impl Points {
 impl Module for Points {
     fn handle_message(&mut self, message: &Message) -> Option<Message> {
         match message {
-            Message::Command(command) => match command.name.as_ref() {
-                "points" => self.points_command(&command),
+            Message::Command(privmsg, command) => match command.name.as_ref() {
+                "points" => self.points_command(&privmsg, &command),
                 _ => return None,
             },
             _ => return None,

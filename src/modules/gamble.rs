@@ -3,8 +3,7 @@ use modules::Module;
 use rand::random;
 use rusqlite::Connection;
 use std::path::Path;
-use twitch::parser::Command;
-use twitch::parser::Message;
+use twitch::parser::{CommandData, Message, PrivateMessage};
 
 pub struct Gamble {
     connection: Connection,
@@ -17,14 +16,14 @@ impl Gamble {
         }
     }
 
-    fn gamble_command(&self, command: &Command) -> Option<Message> {
+    fn gamble_command(&self, privmsg: &PrivateMessage, command: &CommandData) -> Option<Message> {
         let args = &command.args;
 
         if args.len() < 1 {
             return None;
         }
 
-        let curr_points = match get_points(&self.connection, &command.tags["user-id"]) {
+        let curr_points = match get_points(&self.connection, &privmsg.tags["user-id"]) {
             Ok(points) => points,
             Err(e) => {
                 warn!("{}", e);
@@ -42,9 +41,9 @@ impl Gamble {
 
         if amount <= 0 {
             return Some(whisper!(
-                &command.tags["display-name"],
+                &privmsg.tags["display-name"],
                 "{}, please enter a positive amount of points.",
-                &command.tags["display-name"]
+                &privmsg.tags["display-name"]
             ));
         }
 
@@ -55,12 +54,12 @@ impl Gamble {
                 curr_points - amount
             };
 
-            match set_points(&self.connection, &command.tags["user-id"], new_points) {
+            match set_points(&self.connection, &privmsg.tags["user-id"], new_points) {
                 Ok(_) => {
                     return Some(privmsg!(
-                        &command.channel,
+                        &privmsg.channel,
                         "{} has lost and now has {} points.",
-                        &command.tags["display-name"],
+                        &privmsg.tags["display-name"],
                         new_points
                     ));
                 }
@@ -71,9 +70,9 @@ impl Gamble {
             }
         } else {
             return Some(whisper!(
-                &command.tags["display-name"],
+                &privmsg.tags["display-name"],
                 "{}, you don't have enough points for this roulette.",
-                &command.tags["display-name"]
+                &privmsg.tags["display-name"]
             ));
         }
     }
@@ -82,8 +81,8 @@ impl Gamble {
 impl Module for Gamble {
     fn handle_message(&mut self, message: &Message) -> Option<Message> {
         match message {
-            Message::Command(command) => match command.name.as_ref() {
-                "gamble" | "roulette" => self.gamble_command(&command),
+            Message::Command(privmsg, command) => match command.name.as_ref() {
+                "gamble" | "roulette" => self.gamble_command(&privmsg, &command),
                 _ => return None,
             },
             _ => return None,
