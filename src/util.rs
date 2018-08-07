@@ -1,9 +1,9 @@
 extern crate serde_json;
 
 use serde::de::DeserializeOwned;
-use std::path::Path;
 use std::fs::File;
 use std::io;
+use std::path::Path;
 
 pub enum JSONIOError {
     JSONError(serde_json::Error),
