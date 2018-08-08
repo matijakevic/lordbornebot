@@ -118,6 +118,13 @@ impl RPG {
         if args.len() >= 3 {
             match RPG::parse_point_allocations(&args) {
                 Ok(stats) => {
+                    if stats.vit <= 0 || stats.dex <= 0 || stats.str <= 0 {
+                        return Some(Response::Message(whisper!(
+                            username,
+                            "Point allocations must be positive numbers."
+                        )));
+                    }
+
                     let sum = stats.vit + stats.str + stats.dex;
 
                     if sum != MAX_ALLOCATED_POINTS {
