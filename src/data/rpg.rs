@@ -1,83 +1,96 @@
-use rusqlite::{Connection, Error};
+use std::collections::HashMap;
 
-pub struct Stats {
-    pub vitality: i32,
-    pub strength: i32,
-    pub dexterity: i32,
+#[derive(Serialize, Deserialize)]
+pub struct Player {
+    pub inventory: Inventory,
+    pub state: State,
+    pub stats: Stats,
 }
 
+impl Player {
+    pub fn new(stats: Stats) -> Player {
+        Player {
+            inventory: Inventory {
+                bag: Vec::new(),
+                weapon: InventorySlot {
+                    item: None,
+                    slot_type: InventorySlotType::Weapon,
+                },
+                armor: Vec::new(),
+            },
+            state: State { hp: stats.vit },
+            stats,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct State {
     pub hp: i32,
 }
 
-pub enum ItemType {
-    Item(String),
+#[derive(Serialize, Deserialize)]
+pub struct Stats {
+    pub dex: i32,
+    pub str: i32,
+    pub vit: i32,
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum InventorySlotType {
+    Any,
+    Helmet,
+    Ring,
+    Necklace,
+    Leggings,
+    Chestplate,
+    Boots,
     Weapon,
-    Consumable,
-    Armor,
 }
 
-pub struct InventoryItem {
-    pub item: ItemType,
-    pub amount: i32,
+#[derive(Serialize, Deserialize)]
+pub struct WeaponItem {
+    pub base_dmg: i32,
+    pub crit_dmg: i32,
+    pub two_handed: bool,
+    pub dex_scaling: i32,
+    pub str_scaling: i32,
 }
 
-pub fn create_player(
-    connection: &Connection,
-    twitch_id: &str,
-    stats: (i32, i32, i32),
-) -> Result<(), Error> {
-    connection.execute("INSERT INTO Players (UserID) VALUES (?)", &[&twitch_id])?;
-    connection.execute(
-        "INSERT INTO Stats (PlayerID, Vitality, Strength, Dexterity) VALUES (?,?,?,?)",
-        &[&twitch_id, &stats.0, &stats.1, &stats.2],
-    )?;
-    connection.execute(
-        "INSERT INTO State (PlayerID, HP) VALUES (?,?)",
-        &[&twitch_id, &stats.0],
-    )?;
-    Ok(())
+#[derive(Serialize, Deserialize)]
+pub struct ArmorItem {
+    pub def: i32,
+    pub slot: InventorySlotType,
 }
 
-pub fn get_player_info(connection: &Connection, username: &str) -> Result<(Stats, State), Error> {
-    info!("Getting player info for {}", username);
-
-    let data = connection.query_row(
-        "SELECT Stats.Vitality, Stats.Strength, Stats.Dexterity, State.HP FROM Stats WHERE PlayerID=(SELECT ID FROM Users WHERE Username=?)",
-        &[&username],
-        |row| (Stats {
-            vitality: row.get(0),
-            strength: row.get(1),
-            dexterity: row.get(2),
-        }, State {hp: row.get(3)}),
-    )?;
-
-    return Ok(data);
+#[derive(Serialize, Deserialize)]
+pub enum Item {
+    Weapon(String, WeaponItem),
+    Armor(String, ArmorItem),
 }
 
-pub fn get_item(connection: &Connection, id: i32) -> Result<ItemType, Error> {
-    connection.query_row("SELECT Name FROM Items WHERE ID=?", &[&id], |row| {
-        ItemType::Item(row.get(0))
-    })
+#[derive(Serialize, Deserialize)]
+pub struct InventorySlot {
+    pub item: Option<Item>,
+    pub slot_type: InventorySlotType,
 }
 
-pub fn get_all_player_inventory(
-    connection: &Connection,
-    twitch_id: &str,
-) -> Result<Vec<InventoryItem>, Error> {
-    let mut stmt =
-        connection.prepare("SELECT (ItemID, Amount) FROM InventoryItem WHERE PlayerID=?")?;
-    let mut rows = stmt.query(&[&twitch_id])?;
-    let mut items = Vec::new();
+#[derive(Serialize, Deserialize)]
+pub struct Inventory {
+    pub bag: Vec<InventorySlot>,
+    pub weapon: InventorySlot,
+    pub armor: Vec<InventorySlot>,
+}
 
-    while let Some(row) = rows.next() {
-        let row = row?;
-        let item = get_item(connection, row.get(0))?;
-        let amount = row.get(1);
-        items.push(InventoryItem { item, amount });
+#[derive(Serialize, Deserialize)]
+pub struct Game {
+    pub players: HashMap<String, Player>,
+}
+
+impl Game {
+    pub fn new() -> Game {
+        Game {
+            players: HashMap::new(),
+        }
     }
-
-    Ok(items)
 }
-
-pub fn set_player_weapon() {}

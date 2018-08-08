@@ -1,30 +1,29 @@
-use data::rpg::{create_player, get_all_player_inventory, get_player_info};
+use data::rpg::*;
 use modules::Module;
-use rusqlite::{Connection, Error};
-use std::path::Path;
+use std::collections::HashMap;
 use std::str::FromStr;
 use twitch::parser::{CommandData, Message, PrivateMessage};
 
 const MAX_ALLOCATED_POINTS: i32 = 10;
 
 pub struct RPG {
-    connection: Connection,
+    game: Game,
+    mapper: HashMap<String, String>, // Maps Twitch usernames to user IDs.
 }
 
 impl RPG {
-    pub fn new(db_path: &Path) -> RPG {
+    pub fn new() -> RPG {
         RPG {
-            connection: Connection::open(db_path).unwrap(),
+            game: Game::new(),
+            mapper: HashMap::new(),
         }
     }
 
-    pub fn parse_point_allocations(
-        params: &Vec<String>,
-    ) -> Result<(i32, i32, i32), <i32 as FromStr>::Err> {
-        let hp = params[0].parse::<i32>()?;
-        let strength = params[1].parse::<i32>()?;
-        let dexterity = params[2].parse::<i32>()?;
-        Ok((hp, strength, dexterity))
+    pub fn parse_point_allocations(params: &Vec<String>) -> Result<Stats, <i32 as FromStr>::Err> {
+        let vit = params[0].parse::<i32>()?;
+        let str = params[1].parse::<i32>()?;
+        let dex = params[2].parse::<i32>()?;
+        Ok(Stats { vit, str, dex })
     }
 
     fn player_info_command(
@@ -35,36 +34,45 @@ impl RPG {
         let params = &command.args;
 
         let username = if params.len() >= 1 {
-            &command.args[0]
+            command.args[0].clone()
         } else {
-            &privmsg.tags["display-name"]
+            privmsg.tags["display-name"].to_lowercase()
         };
 
-        match get_player_info(&self.connection, username) {
-            Ok((stats, state)) => {
+        match self.mapper.get(&username) {
+            Some(id) => {
+                let player = &self.game.players[id];
+
                 return Some(privmsg!(
                     &privmsg.channel,
                     "{}'s stats: VIT {}, STR {}, DEX {}, state: HP {}",
                     username,
-                    stats.vitality,
-                    stats.strength,
-                    stats.dexterity,
-                    state.hp
+                    player.stats.vit,
+                    player.stats.str,
+                    player.stats.dex,
+                    player.state.hp
                 ));
             }
-            Err(e) => {
-                warn!("{}", e);
-                return None;
+            None => {
+                return Some(privmsg!(
+                    &privmsg.channel,
+                    "{}, no such user found.",
+                    privmsg.tags["display-name"]
+                ));
             }
         }
     }
 
-    fn create_command(&self, privmsg: &PrivateMessage, command: &CommandData) -> Option<Message> {
+    fn create_command(
+        &mut self,
+        privmsg: &PrivateMessage,
+        command: &CommandData,
+    ) -> Option<Message> {
         let params = &command.args;
         if params.len() >= 3 {
             match RPG::parse_point_allocations(&params) {
-                Ok((vitality, strength, dexterity)) => {
-                    let sum = vitality + strength + dexterity;
+                Ok(stats) => {
+                    let sum = stats.vit + stats.str + stats.dex;
 
                     if sum != MAX_ALLOCATED_POINTS {
                         return Some(privmsg!(
@@ -75,29 +83,26 @@ impl RPG {
                             sum
                         ));
                     } else {
-                        match create_player(
-                            &self.connection,
-                            &privmsg.tags["user-id"],
-                            (vitality, strength, dexterity),
-                        ) {
-                            Ok(()) => {
-                                return Some(privmsg!(
-                                    &privmsg.channel,
-                                    "Created a new player for {}!",
-                                    privmsg.tags["display-name"]
-                                ));
-                            }
-                            Err(e) => {
-                                warn!("{}", e);
-                                return None;
-                            }
-                        }
+                        self.mapper.insert(
+                            privmsg.tags["display-name"].to_lowercase().to_string(),
+                            privmsg.tags["user-id"].clone(),
+                        );
+
+                        self.game
+                            .players
+                            .insert(privmsg.tags["user-id"].clone(), Player::new(stats));
+
+                        return Some(privmsg!(
+                            &privmsg.channel,
+                            "{}, successfully created your character! PagChomp",
+                            privmsg.tags["display-name"]
+                        ));
                     }
                 }
                 Err(_) => {
                     return Some(privmsg!(
                         &privmsg.channel,
-                        "{}, command usage: >>create <vitality> <strength> <dexterity>",
+                        "{}, point allocations are numerical values.",
                         privmsg.tags["display-name"]
                     ));
                 }
@@ -122,19 +127,6 @@ impl RPG {
             // User specified what type of items to list
         } else {
             // Assuming to list all items
-            match get_all_player_inventory(&self.connection, &privmsg.tags["user-id"]) {
-                Ok(items) => {
-                    return Some(privmsg!(
-                        &privmsg.channel,
-                        "{}, command usage: >>create <vitality> <strength> <dexterity>",
-                        privmsg.tags["display-name"]
-                    ))
-                }
-                Err(e) => {
-                    warn!("{}", e);
-                    return None;
-                }
-            }
         }
 
         None
@@ -157,9 +149,9 @@ impl RPG {
 
         if args.len() < 1 {
             return Some(privmsg!(
-                &privmsg.channel,
-                "{}, command usage: >>inventory <list<all|weapons|armor|consumables>|info <item_name>>",
-                privmsg.tags["display-name"]
+                    &privmsg.channel,
+                    "{}, command usage: >>inventory <list<all|weapons|armor|consumables>|info <item_name>>",
+                    privmsg.tags["display-name"]
             ));
         }
 
