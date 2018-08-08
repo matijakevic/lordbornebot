@@ -42,23 +42,17 @@ pub fn create_player(
 pub fn get_player_info(connection: &Connection, username: &str) -> Result<(Stats, State), Error> {
     info!("Getting player info for {}", username);
 
-    let stats = connection.query_row(
-        "SELECT Vitality, Strength, Dexterity FROM Stats WHERE PlayerID=(SELECT ID FROM Users WHERE Username=?)",
+    let data = connection.query_row(
+        "SELECT Stats.Vitality, Stats.Strength, Stats.Dexterity, State.HP FROM Stats WHERE PlayerID=(SELECT ID FROM Users WHERE Username=?)",
         &[&username],
-        |row| Stats {
+        |row| (Stats {
             vitality: row.get(0),
             strength: row.get(1),
             dexterity: row.get(2),
-        },
+        }, State {hp: row.get(3)}),
     )?;
 
-    let state = connection.query_row(
-        "SELECT HP FROM State WHERE PlayerID=(SELECT ID FROM Users WHERE Username=?)",
-        &[&username],
-        |row| State { hp: row.get(0) },
-    )?;
-
-    return Ok((stats, state));
+    return Ok(data);
 }
 
 pub fn get_item(connection: &Connection, id: i32) -> Result<ItemType, Error> {
