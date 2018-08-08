@@ -3,7 +3,7 @@ use modules::Module;
 use rusqlite::Connection;
 use std::collections::HashMap;
 use std::path::Path;
-use twitch::parser::Message;
+use twitch::parser::{Message, Response};
 
 struct ShapeData {
     stage: i32,
@@ -31,7 +31,7 @@ impl Shapes {
 }
 
 impl Module for Shapes {
-    fn handle_message(&mut self, message: &Message) -> Option<Message> {
+    fn handle_message(&mut self, message: &Message) -> Option<Response> {
         match message {
             Message::Private(privmsg) => {
                 let tokens: Vec<&str> = privmsg.text.split(" ").collect();
@@ -98,7 +98,7 @@ impl Module for Shapes {
                         Ok(curr_points) => {
                             let new_points = curr_points + 100;
                             match set_points(&self.connection, &privmsg.tags["user-id"], new_points) {
-                                Ok(_) => return Some(privmsg!(&privmsg.channel, "{} completed the {} E shape, won 100 points and now has {} points. PagChomp", &privmsg.tags["display-name"], &token, new_points)),
+                                Ok(_) => return Some(Response::Message(privmsg!(&privmsg.channel, "{} completed the {} E shape, won 100 points and now has {} points. PagChomp", &privmsg.tags["display-name"], &token, new_points))),
                                 Err(e) => {
                                     warn!("{}", e);
                                     return None;

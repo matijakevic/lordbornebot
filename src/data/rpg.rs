@@ -9,17 +9,34 @@ pub struct Player {
     pub stats: Stats,
 }
 
+const INITIAL_BAG_SLOTS: usize = 5;
+const INITIAL_ARMOR_SLOTS: usize = 6;
+
 impl Player {
     pub fn new(stats: Stats) -> Player {
+        let mut inventory = Inventory::default();
+
+        for _ in 0..INITIAL_BAG_SLOTS {
+            inventory.bag.push(None);
+        }
+
+        for _ in 0..INITIAL_BAG_SLOTS {
+            inventory.bag.push(None);
+        }
+
+        inventory.bag[0] = Some(InventoryItem {
+            name: "Ludwig's Holy Blade".to_string(),
+            item: Item::Weapon(Weapon {
+                base_dmg: 1,
+                crit_dmg: 4,
+                two_handed: false,
+                dex_scaling: 1,
+                str_scaling: 1,
+            }),
+        });
+
         Player {
-            inventory: Inventory {
-                bag: Vec::new(),
-                weapon: InventorySlot {
-                    item: None,
-                    slot_type: InventorySlotType::Weapon,
-                },
-                armor: Vec::new(),
-            },
+            inventory,
             state: State { hp: stats.vit },
             stats,
         }
@@ -39,19 +56,7 @@ pub struct Stats {
 }
 
 #[derive(Serialize, Deserialize)]
-pub enum InventorySlotType {
-    Any,
-    Helmet,
-    Ring,
-    Necklace,
-    Leggings,
-    Chestplate,
-    Boots,
-    Weapon,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct WeaponItem {
+pub struct Weapon {
     pub base_dmg: i32,
     pub crit_dmg: i32,
     pub two_handed: bool,
@@ -60,28 +65,46 @@ pub struct WeaponItem {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct ArmorItem {
+pub struct Armor {
     pub def: i32,
-    pub slot: InventorySlotType,
 }
 
 #[derive(Serialize, Deserialize)]
 pub enum Item {
-    Weapon(String, WeaponItem),
-    Armor(String, ArmorItem),
+    Weapon(Weapon),
+    Chestplate(Armor),
+    Helmet(Armor),
+    Ring(Armor),
+    Necklace(Armor),
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct InventorySlot {
-    pub item: Option<Item>,
-    pub slot_type: InventorySlotType,
+pub struct InventoryItem {
+    pub name: String,
+    pub item: Item,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Inventory {
-    pub bag: Vec<InventorySlot>,
-    pub weapon: InventorySlot,
-    pub armor: Vec<InventorySlot>,
+    pub bag: Vec<Option<InventoryItem>>, // Can hold arbitrary items
+    pub weapon: Option<InventoryItem>,
+    pub ring: Option<InventoryItem>,
+    pub necklace: Option<InventoryItem>,
+    pub chestplate: Option<InventoryItem>,
+    pub helmet: Option<InventoryItem>,
+}
+
+impl Default for Inventory {
+    fn default() -> Inventory {
+        Inventory {
+            bag: Vec::new(),
+            weapon: None,
+            ring: None,
+            necklace: None,
+            chestplate: None,
+            helmet: None,
+        }
+    }
 }
 
 pub fn save_player(connection: &Connection, twitch_id: &str, player: &Player) {
@@ -113,4 +136,8 @@ pub fn load_player(connection: &Connection, twitch_id: &str) -> Result<Option<Pl
         Some(player_data) => return Ok(Some(deserialize(&player_data).unwrap())),
         None => return Ok(None),
     }
+}
+
+pub fn delete_player(connection: &Connection, twitch_id: &str) -> Result<i32, Error> {
+    connection.execute("UPDATE Users SET RPGData=NULL WHERE ID=?", &[&twitch_id])
 }

@@ -14,6 +14,11 @@ pub struct PrivateMessage {
     pub text: String,
 }
 
+pub enum Response {
+    Message(Message),
+    Messages(Vec<Message>),
+}
+
 #[macro_export]
 macro_rules! privmsg {
     ($channel:expr, $fmt:expr) => ($crate::twitch::parser::Message::Private($crate::twitch::parser::PrivateMessage {
@@ -119,6 +124,21 @@ impl<'a> Parser<'a> {
         }
 
         Err("Cannot decode this message")
+    }
+
+    pub fn encode_response(response: &Response) -> Result<String, &'static str> {
+        match response {
+            Response::Message(message) => return Parser::encode(message),
+            Response::Messages(messages) => {
+                let mut out = String::new();
+                for message in messages {
+                    let raw = Parser::encode(message)?;
+                    out += &raw;
+                    out += "\r\n";
+                }
+                return Ok(out);
+            }
+        }
     }
 
     pub fn encode(message: &Message) -> Result<String, &'static str> {

@@ -1,3 +1,5 @@
 /target
 **/*.rs.bk
 config.json
+data.db
+Cargo.lock

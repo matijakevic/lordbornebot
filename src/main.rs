@@ -43,7 +43,7 @@ struct Config {
 fn forward_to_modules(modules: &mut Vec<Box<Module>>, message: &Message, client: &mut Client) {
     for module in modules {
         if let Some(out_message) = module.handle_message(&message) {
-            match Parser::encode(&out_message) {
+            match Parser::encode_response(&out_message) {
                 Ok(raw_message) => client.send_line(&raw_message),
                 Err(e) => println!("{}", e),
             }
