@@ -17,7 +17,7 @@ pub struct PrivateMessage {
 #[macro_export]
 macro_rules! privmsg {
     ($channel:expr, $fmt:expr) => ($crate::twitch::parser::Message::Private($crate::twitch::parser::PrivateMessage {
-        tags: $crate::std::collections::new(),
+        tags: $crate::std::collections::HashMap::new(),
         sender: String::new(),
         text: $fmt.to_string(),
         channel: $channel.to_string()

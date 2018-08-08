@@ -1,3 +1,4 @@
+extern crate bincode;
 extern crate chrono;
 extern crate rand;
 extern crate regex;

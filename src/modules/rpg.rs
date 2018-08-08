@@ -1,11 +1,14 @@
+use bincode::{deserialize_from, serialize_into, Error};
 use data::rpg::*;
 use modules::Module;
 use std::collections::HashMap;
+use std::fs::File;
 use std::str::FromStr;
 use twitch::parser::{CommandData, Message, PrivateMessage};
 
 const MAX_ALLOCATED_POINTS: i32 = 10;
 
+#[derive(Serialize, Deserialize)]
 pub struct RPG {
     game: Game,
     mapper: HashMap<String, String>, // Maps Twitch usernames to user IDs.
@@ -19,10 +22,23 @@ impl RPG {
         }
     }
 
-    pub fn parse_point_allocations(params: &Vec<String>) -> Result<Stats, <i32 as FromStr>::Err> {
-        let vit = params[0].parse::<i32>()?;
-        let str = params[1].parse::<i32>()?;
-        let dex = params[2].parse::<i32>()?;
+    pub fn save_data(&self) -> Result<(), Error> {
+        let mut file = File::create("rpg_module.dat").unwrap();
+        serialize_into(file, self)
+    }
+
+    pub fn load_data(&mut self) -> Result<(), Error> {
+        let mut file = File::open("rpg_module.dat").unwrap();
+        let data: RPG = deserialize_from(file)?;
+        self.game = data.game;
+        self.mapper = data.mapper;
+        Ok(())
+    }
+
+    pub fn parse_point_allocations(args: &Vec<String>) -> Result<Stats, <i32 as FromStr>::Err> {
+        let vit = args[0].parse::<i32>()?;
+        let str = args[1].parse::<i32>()?;
+        let dex = args[2].parse::<i32>()?;
         Ok(Stats { vit, str, dex })
     }
 
@@ -31,22 +47,25 @@ impl RPG {
         privmsg: &PrivateMessage,
         command: &CommandData,
     ) -> Option<Message> {
-        let params = &command.args;
+        let args = &command.args;
+        let username = &privmsg.tags["display-name"];
 
-        let username = if params.len() >= 1 {
-            command.args[0].clone()
+        let target = if args.len() >= 1 {
+            // User specified who's info he/she wants.
+            command.args[0].to_lowercase()
         } else {
-            privmsg.tags["display-name"].to_lowercase()
+            // User wants own info.
+            username.to_lowercase()
         };
 
-        match self.mapper.get(&username) {
+        match self.mapper.get(&target) {
             Some(id) => {
                 let player = &self.game.players[id];
 
-                return Some(privmsg!(
-                    &privmsg.channel,
-                    "{}'s stats: VIT {}, STR {}, DEX {}, state: HP {}",
+                return Some(whisper!(
                     username,
+                    "{}'s stats: VIT {}, STR {}, DEX {}, state: HP {}",
+                    target,
                     player.stats.vit,
                     player.stats.str,
                     player.stats.dex,
@@ -54,11 +73,7 @@ impl RPG {
                 ));
             }
             None => {
-                return Some(privmsg!(
-                    &privmsg.channel,
-                    "{}, no such user found.",
-                    privmsg.tags["display-name"]
-                ));
+                return Some(whisper!(username, "No such user found."));
             }
         }
     }
@@ -68,23 +83,24 @@ impl RPG {
         privmsg: &PrivateMessage,
         command: &CommandData,
     ) -> Option<Message> {
-        let params = &command.args;
-        if params.len() >= 3 {
-            match RPG::parse_point_allocations(&params) {
+        let args = &command.args;
+        let username = &privmsg.tags["display-name"];
+
+        if args.len() >= 3 {
+            match RPG::parse_point_allocations(&args) {
                 Ok(stats) => {
                     let sum = stats.vit + stats.str + stats.dex;
 
                     if sum != MAX_ALLOCATED_POINTS {
-                        return Some(privmsg!(
-                            &privmsg.channel,
-                            "{}, you have to allocate {} points, but you've allocated {}.",
-                            privmsg.tags["display-name"],
+                        return Some(whisper!(
+                            username,
+                            "You have to allocate {} points, but you've allocated {}.",
                             MAX_ALLOCATED_POINTS,
                             sum
                         ));
                     } else {
                         self.mapper.insert(
-                            privmsg.tags["display-name"].to_lowercase().to_string(),
+                            username.to_lowercase().to_string(),
                             privmsg.tags["user-id"].clone(),
                         );
 
@@ -95,23 +111,21 @@ impl RPG {
                         return Some(privmsg!(
                             &privmsg.channel,
                             "{}, successfully created your character! PagChomp",
-                            privmsg.tags["display-name"]
+                            username
                         ));
                     }
                 }
                 Err(_) => {
-                    return Some(privmsg!(
-                        &privmsg.channel,
-                        "{}, point allocations are numerical values.",
-                        privmsg.tags["display-name"]
+                    return Some(whisper!(
+                        username,
+                        "Point allocations are numerical values."
                     ));
                 }
             }
         } else {
-            return Some(privmsg!(
-                &privmsg.channel,
-                "{}, command usage: >>create <vitality> <strength> <dexterity>",
-                privmsg.tags["display-name"]
+            return Some(whisper!(
+                username,
+                "Command usage: >>create <vitality> <strength> <dexterity>"
             ));
         }
     }
@@ -122,11 +136,21 @@ impl RPG {
         command: &CommandData,
     ) -> Option<Message> {
         let args = &command.args;
+        let username = &privmsg.tags["display-name"];
 
         if args.len() == 2 {
             // User specified what type of items to list
         } else {
             // Assuming to list all items
+            match self.mapper.get(username) {
+                Some(id) => {
+                    let player = &self.game.players[id];
+                    let inv = &player.inventory;
+
+                    return Some(whisper!(username, "Your inventoryabc"));
+                }
+                None => {}
+            }
         }
 
         None
@@ -140,18 +164,51 @@ impl RPG {
         None
     }
 
+    fn data_command(&mut self, privmsg: &PrivateMessage, command: &CommandData) -> Option<Message> {
+        let args = &command.args;
+        let username = &privmsg.tags["display-name"];
+
+        if args.len() < 1 {
+            return Some(whisper!(username, "Command usage: >>data <save|load>"));
+        }
+
+        match args[0].as_ref() {
+            "load" => match self.load_data() {
+                Ok(()) => {
+                    return Some(privmsg!(&privmsg.channel, "Game data loaded!"));
+                }
+                Err(e) => {
+                    error!("{}", e);
+                    return None;
+                }
+            },
+            "save" => match self.save_data() {
+                Ok(()) => {
+                    return Some(privmsg!(&privmsg.channel, "Game data saved!"));
+                }
+                Err(e) => {
+                    error!("{}", e);
+                    return None;
+                }
+            },
+            _ => {
+                return Some(whisper!(username, "Command usage: >>data <save|load>"));
+            }
+        }
+    }
+
     fn inventory_command(
         &self,
         privmsg: &PrivateMessage,
         command: &CommandData,
     ) -> Option<Message> {
         let args = &command.args;
+        let username = &privmsg.tags["display-name"];
 
         if args.len() < 1 {
-            return Some(privmsg!(
-                    &privmsg.channel,
-                    "{}, command usage: >>inventory <list<all|weapons|armor|consumables>|info <item_name>>",
-                    privmsg.tags["display-name"]
+            return Some(whisper!(
+                username,
+                "Command usage: >>inventory <list<all|weapons|armor|consumables>|info <item_name>>"
             ));
         }
 
@@ -159,11 +216,10 @@ impl RPG {
             "list" => return self.inventory_command_list(privmsg, command),
             "info" => return self.inventory_command_info(privmsg, command),
             _ => {
-                return Some(privmsg!(
-                    &privmsg.channel,
-                    "{}, command usage: >>create <vitality> <strength> <dexterity>",
-                    privmsg.tags["display-name"]
-                ))
+                return Some(whisper!(
+                username,
+                "Command usage: >>inventory <list<all|weapons|armor|consumables>|info <item_name>>"
+            ));
             }
         }
     }
@@ -175,7 +231,8 @@ impl Module for RPG {
             return match command.name.as_ref() {
                 "create" => self.create_command(privmsg, command),
                 "info" => self.player_info_command(privmsg, command),
-                // "inventory" => self.inventory_command(privmsg, command),
+                "inventory" => self.inventory_command(privmsg, command),
+                "data" => self.data_command(privmsg, command),
                 _ => None,
             };
         }
