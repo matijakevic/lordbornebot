@@ -1,3 +1,5 @@
+use bincode::{deserialize, serialize};
+use rusqlite::{Connection, Error};
 use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize)]
@@ -82,15 +84,33 @@ pub struct Inventory {
     pub armor: Vec<InventorySlot>,
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct Game {
-    pub players: HashMap<String, Player>,
+pub fn save_player(connection: &Connection, twitch_id: &str, player: &Player) {
+    let data = serialize(player).unwrap();
+    connection
+        .execute(
+            "UPDATE Users SET RPGData=? WHERE ID=?",
+            &[&data, &twitch_id],
+        )
+        .unwrap();
 }
 
-impl Game {
-    pub fn new() -> Game {
-        Game {
-            players: HashMap::new(),
-        }
+pub fn get_twitch_id(connection: &Connection, username: &str) -> Result<String, Error> {
+    connection.query_row(
+        "SELECT ID FROM Users WHERE Username=?",
+        &[&username.to_lowercase()],
+        |row| row.get(0),
+    )
+}
+
+pub fn load_player(connection: &Connection, twitch_id: &str) -> Result<Option<Player>, Error> {
+    let data: Option<Vec<u8>> = connection.query_row(
+        "SELECT RPGData FROM Users WHERE ID=?",
+        &[&twitch_id],
+        |row| row.get(0),
+    )?;
+
+    match data {
+        Some(player_data) => return Ok(Some(deserialize(&player_data).unwrap())),
+        None => return Ok(None),
     }
 }

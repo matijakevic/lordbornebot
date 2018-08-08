@@ -4,6 +4,6 @@ use rusqlite::{Connection, Error};
 pub fn check_user(connection: &Connection, user_id: &str, username: &str) -> Result<i32, Error> {
     connection.execute(
         "INSERT OR IGNORE INTO Users (ID, Username) VALUES (?, ?)",
-        &[&user_id, &username],
+        &[&user_id, &username.to_lowercase()],
     )
 }

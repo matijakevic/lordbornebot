@@ -1,38 +1,27 @@
-use bincode::{deserialize_from, serialize_into, Error};
 use data::rpg::*;
 use modules::Module;
-use std::collections::HashMap;
-use std::fs::File;
+use rusqlite::Connection;
+
+use std::path::Path;
 use std::str::FromStr;
 use twitch::parser::{CommandData, Message, PrivateMessage};
 
 const MAX_ALLOCATED_POINTS: i32 = 10;
 
-#[derive(Serialize, Deserialize)]
 pub struct RPG {
-    game: Game,
-    mapper: HashMap<String, String>, // Maps Twitch usernames to user IDs.
+    connection: Connection,
+}
+
+enum PlayerGetBy {
+    Username(String),
+    ID(String),
 }
 
 impl RPG {
-    pub fn new() -> RPG {
+    pub fn new(db_path: &Path) -> RPG {
         RPG {
-            game: Game::new(),
-            mapper: HashMap::new(),
+            connection: Connection::open(db_path).unwrap(),
         }
-    }
-
-    pub fn save_data(&self) -> Result<(), Error> {
-        let mut file = File::create("rpg_module.dat").unwrap();
-        serialize_into(file, self)
-    }
-
-    pub fn load_data(&mut self) -> Result<(), Error> {
-        let mut file = File::open("rpg_module.dat").unwrap();
-        let data: RPG = deserialize_from(file)?;
-        self.game = data.game;
-        self.mapper = data.mapper;
-        Ok(())
     }
 
     pub fn parse_point_allocations(args: &Vec<String>) -> Result<Stats, <i32 as FromStr>::Err> {
@@ -58,21 +47,23 @@ impl RPG {
             username.to_lowercase()
         };
 
-        match self.mapper.get(&target) {
-            Some(id) => {
-                let player = &self.game.players[id];
+        match get_twitch_id(&self.connection, &target) {
+            Ok(id) => {
+                if let Ok(Some(player)) = load_player(&self.connection, &id) {
+                    return Some(whisper!(
+                        username,
+                        "{}'s stats: VIT {}, STR {}, DEX {}, state: HP {}",
+                        target,
+                        player.stats.vit,
+                        player.stats.str,
+                        player.stats.dex,
+                        player.state.hp
+                    ));
+                }
 
-                return Some(whisper!(
-                    username,
-                    "{}'s stats: VIT {}, STR {}, DEX {}, state: HP {}",
-                    target,
-                    player.stats.vit,
-                    player.stats.str,
-                    player.stats.dex,
-                    player.state.hp
-                ));
+                return None;
             }
-            None => {
+            Err(_) => {
                 return Some(whisper!(username, "No such user found."));
             }
         }
@@ -99,14 +90,11 @@ impl RPG {
                             sum
                         ));
                     } else {
-                        self.mapper.insert(
-                            username.to_lowercase().to_string(),
-                            privmsg.tags["user-id"].clone(),
+                        save_player(
+                            &self.connection,
+                            &privmsg.tags["user-id"],
+                            &Player::new(stats),
                         );
-
-                        self.game
-                            .players
-                            .insert(privmsg.tags["user-id"].clone(), Player::new(stats));
 
                         return Some(privmsg!(
                             &privmsg.channel,
@@ -142,14 +130,16 @@ impl RPG {
             // User specified what type of items to list
         } else {
             // Assuming to list all items
-            match self.mapper.get(username) {
-                Some(id) => {
-                    let player = &self.game.players[id];
-                    let inv = &player.inventory;
+            match get_twitch_id(&self.connection, &username) {
+                Ok(id) => {
+                    if let Ok(Some(player)) = load_player(&self.connection, &id) {
+                        let inv = &player.inventory;
 
-                    return Some(whisper!(username, "Your inventoryabc"));
+                        return Some(whisper!(username, "Your inventoryabc"));
+                    }
+                    return None;
                 }
-                None => {}
+                Err(_) => {}
             }
         }
 
@@ -164,39 +154,6 @@ impl RPG {
         None
     }
 
-    fn data_command(&mut self, privmsg: &PrivateMessage, command: &CommandData) -> Option<Message> {
-        let args = &command.args;
-        let username = &privmsg.tags["display-name"];
-
-        if args.len() < 1 {
-            return Some(whisper!(username, "Command usage: >>data <save|load>"));
-        }
-
-        match args[0].as_ref() {
-            "load" => match self.load_data() {
-                Ok(()) => {
-                    return Some(privmsg!(&privmsg.channel, "Game data loaded!"));
-                }
-                Err(e) => {
-                    error!("{}", e);
-                    return None;
-                }
-            },
-            "save" => match self.save_data() {
-                Ok(()) => {
-                    return Some(privmsg!(&privmsg.channel, "Game data saved!"));
-                }
-                Err(e) => {
-                    error!("{}", e);
-                    return None;
-                }
-            },
-            _ => {
-                return Some(whisper!(username, "Command usage: >>data <save|load>"));
-            }
-        }
-    }
-
     fn inventory_command(
         &self,
         privmsg: &PrivateMessage,
@@ -208,7 +165,7 @@ impl RPG {
         if args.len() < 1 {
             return Some(whisper!(
                 username,
-                "Command usage: >>inventory <list<all|weapons|armor|consumables>|info <item_name>>"
+                "Command usage: >>inventory <list< weapons|armor|consumables>>|<info <item_name>>"
             ));
         }
 
@@ -232,7 +189,6 @@ impl Module for RPG {
                 "create" => self.create_command(privmsg, command),
                 "info" => self.player_info_command(privmsg, command),
                 "inventory" => self.inventory_command(privmsg, command),
-                "data" => self.data_command(privmsg, command),
                 _ => None,
             };
         }

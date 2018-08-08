@@ -55,7 +55,7 @@ fn init_modules(config: &Config, modules: &mut Vec<Box<Module>>) {
     let points_module = Points::new(&config.database_path);
     let gamble_module = Gamble::new(&config.database_path);
     let shapes_module = Shapes::new(&config.database_path);
-    let rpg_module = RPG::new();
+    let rpg_module = RPG::new(&config.database_path);
 
     modules.push(Box::new(points_module));
     modules.push(Box::new(gamble_module));
