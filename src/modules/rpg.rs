@@ -8,13 +8,20 @@ use twitch::parser::{CommandData, Message, PrivateMessage, Response};
 
 const MAX_ALLOCATED_POINTS: i32 = 10;
 
-pub struct RPG {
-    connection: Connection,
+macro_rules! print_inventory_item {
+    ($item:expr, $var:expr, $equipped:expr) => {
+        if let Some(item) = $item {
+            $var += &item.name;
+            if $equipped {
+                $var += " (equipped)";
+            }
+            $var += ", ";
+        }
+    };
 }
 
-enum PlayerGetBy {
-    Username(String),
-    ID(String),
+pub struct RPG {
+    connection: Connection,
 }
 
 impl RPG {
@@ -205,53 +212,23 @@ impl RPG {
                 Ok(id) => {
                     if let Ok(Some(player)) = load_player(&self.connection, &id) {
                         let inv = &player.inventory;
-                        let mut messages = Vec::new();
+                        let mut out = String::new();
 
-                        {
-                            let mut out = String::new();
-                            for inv_item in &inv.bag {
-                                out += match inv_item {
-                                    Some(item) => &item.name,
-                                    None => "<empty>",
-                                };
-                                out += " ";
-                            }
-                            messages.push(whisper!(username, "Bag: {}", &out));
+                        for inv_item in &inv.bag {
+                            print_inventory_item!(inv_item, out, false);
                         }
 
-                        {
-                            let out = match &inv.weapon {
-                                Some(item) => &item.name,
-                                None => "<empty>",
-                            };
-                            messages.push(whisper!(username, "Weapon: {}", &out));
-                        }
+                        print_inventory_item!(&inv.weapon, out, true);
+                        print_inventory_item!(&inv.ring, out, true);
+                        print_inventory_item!(&inv.helmet, out, true);
+                        print_inventory_item!(&inv.chestplate, out, true);
+                        print_inventory_item!(&inv.necklace, out, true);
 
-                        {
-                            let mut out = "Ring: ".to_string();
-                            out += match &inv.ring {
-                                Some(item) => &item.name,
-                                None => "<empty>",
-                            };
-                            out += " Helmet: ";
-                            out += match &inv.helmet {
-                                Some(item) => &item.name,
-                                None => "<empty>",
-                            };
-                            out += " Chestplate: ";
-                            out += match &inv.chestplate {
-                                Some(item) => &item.name,
-                                None => "<empty>",
-                            };
-                            out += " Necklace: ";
-                            out += match &inv.necklace {
-                                Some(item) => &item.name,
-                                None => "<empty>",
-                            };
-                            messages.push(whisper!(username, "{}", &out));
-                        }
-
-                        return Some(Response::Messages(messages));
+                        return Some(Response::Message(whisper!(
+                            username,
+                            "Your inventory: {}",
+                            out.trim_right_matches(", ")
+                        )));
                     }
                     return None;
                 }
@@ -261,6 +238,8 @@ impl RPG {
 
         None
     }
+
+    fn equip_command() {}
 
     fn inventory_command_info(
         &self,

@@ -5,6 +5,7 @@ pub enum Message {
     Unknown,
     Private(PrivateMessage),
     Command(PrivateMessage, CommandData),
+    Ping,
 }
 
 pub struct PrivateMessage {
@@ -72,6 +73,10 @@ impl<'a> Parser<'a> {
     }
 
     pub fn decode(&self, line: &str) -> Result<Message, &'static str> {
+        if line == "PING :tmi.twitch.tv" {
+            return Ok(Message::Ping);
+        }
+
         if let Some(captures) = self.parse_regex.captures(line) {
             match captures.get(3).unwrap().as_str() {
                 "PRIVMSG" => {

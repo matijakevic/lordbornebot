@@ -110,6 +110,7 @@ fn main() {
                                 &privmsg.tags["display-name"],
                             ).unwrap();
                         }
+                        Message::Ping => client.send_line("PONG :tmi.twitch.tv"),
                         _ => {}
                     }
 
