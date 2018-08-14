@@ -24,15 +24,15 @@ impl Player {
             inventory.bag.push(None);
         }
 
-        inventory.bag[0] = Some(InventoryItem {
+        inventory.weapon = Some(InventoryItem {
             name: "Ludwig's Holy Blade".to_string(),
-            item: Item::Weapon(Weapon {
+            item: Weapon {
                 base_dmg: 1,
                 crit_dmg: 4,
                 two_handed: false,
-                dex_scaling: 1,
+                dex_scaling: 2,
                 str_scaling: 1,
-            }),
+            },
         });
 
         Player {
@@ -40,6 +40,28 @@ impl Player {
             state: State { hp: stats.vit },
             stats,
         }
+    }
+
+    pub fn can_equip_shield(&self) -> bool {
+        match &self.inventory.weapon {
+            Some(inv_item) => {
+                return !inv_item.item.two_handed;
+            }
+            None => return true,
+        }
+    }
+
+    pub fn get_damage(&self) -> (i32, i32) {
+        let mut dmg = 0;
+        let mut dmg_crit = 0;
+        if let Some(inv_item) = &self.inventory.weapon {
+            dmg += inv_item.item.base_dmg;
+            dmg += self.stats.str * inv_item.item.str_scaling;
+            dmg += self.stats.dex * inv_item.item.dex_scaling;
+
+            dmg_crit += inv_item.item.crit_dmg;
+        }
+        return (dmg, dmg_crit);
     }
 }
 
@@ -73,25 +95,25 @@ pub struct Armor {
 pub enum Item {
     Weapon(Weapon),
     Chestplate(Armor),
-    Helmet(Armor),
-    Ring(Armor),
-    Necklace(Armor),
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct InventoryItem {
+pub struct InventoryItem<T> {
     pub name: String,
-    pub item: Item,
+    pub item: T,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Inventory {
-    pub bag: Vec<Option<InventoryItem>>, // Can hold arbitrary items
-    pub weapon: Option<InventoryItem>,
-    pub ring: Option<InventoryItem>,
-    pub necklace: Option<InventoryItem>,
+    // Can hold arbitrary items
+    pub weapon: Option<InventoryItem<Weapon>>,
+
+    pub bag: Vec<Option<InventoryItem<Item>>>,
+    //pub ring: Option<InventoryItem<Armor>>,
+    /*pub necklace: Option<InventoryItem>,
     pub chestplate: Option<InventoryItem>,
     pub helmet: Option<InventoryItem>,
+    pub shield: Option<InventoryItem>,*/
 }
 
 impl Default for Inventory {
@@ -99,10 +121,6 @@ impl Default for Inventory {
         Inventory {
             bag: Vec::new(),
             weapon: None,
-            ring: None,
-            necklace: None,
-            chestplate: None,
-            helmet: None,
         }
     }
 }

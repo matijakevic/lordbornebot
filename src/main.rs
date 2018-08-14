@@ -17,6 +17,7 @@ mod data;
 mod modules;
 mod util;
 
+use bincode::{deserialize_from, serialize_into};
 use data::users::check_user;
 use modules::gamble::Gamble;
 use modules::points::Points;

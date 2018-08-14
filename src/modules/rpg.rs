@@ -8,18 +8,6 @@ use twitch::parser::{CommandData, Message, PrivateMessage, Response};
 
 const MAX_ALLOCATED_POINTS: i32 = 10;
 
-macro_rules! print_inventory_item {
-    ($item:expr, $var:expr, $equipped:expr) => {
-        if let Some(item) = $item {
-            $var += &item.name;
-            if $equipped {
-                $var += " (equipped)";
-            }
-            $var += ", ";
-        }
-    };
-}
-
 pub struct RPG {
     connection: Connection,
 }
@@ -52,22 +40,24 @@ impl RPG {
             match get_twitch_id(&self.connection, &target) {
                 Ok(id) => match load_player(&self.connection, &id) {
                     Ok(Some(player)) => {
+                        let dmg = player.get_damage();
                         return Some(Response::Message(privmsg!(
                             &privmsg.channel,
-                            "{}, {}'s stats: VIT {}, STR {}, DEX {}, state: HP {}",
-                            username,
+                            "{}'s stats: VIT {}, STR {}, DEX {}; HP {}, DMG: {} ({})",
                             target,
                             player.stats.vit,
                             player.stats.str,
                             player.stats.dex,
-                            player.state.hp
-                        )))
+                            player.state.hp,
+                            dmg.0,
+                            dmg.1
+                        )));
                     }
                     Ok(None) => {
                         return Some(Response::Message(whisper!(
                             username,
                             "That user doesn't have a character created"
-                        )))
+                        )));
                     }
                     Err(e) => {
                         error!("{}", e);
@@ -82,21 +72,24 @@ impl RPG {
             // User wants own info.
             match load_player(&self.connection, &privmsg.tags["user-id"]) {
                 Ok(Some(player)) => {
+                    let dmg = player.get_damage();
                     return Some(Response::Message(privmsg!(
                         &privmsg.channel,
-                        "{}'s stats: VIT {}, STR {}, DEX {}, state: HP {}",
-                        &username.to_lowercase(),
+                        "{}'s stats: VIT {}, STR {}, DEX {}; HP {}, DMG: {} ({})",
+                        username.to_lowercase(),
                         player.stats.vit,
                         player.stats.str,
                         player.stats.dex,
-                        player.state.hp
-                    )))
+                        player.state.hp,
+                        dmg.0,
+                        dmg.1
+                    )));
                 }
                 Ok(None) => {
                     return Some(Response::Message(whisper!(
                         username,
                         "That user doesn't have a character created."
-                    )))
+                    )));
                 }
                 Err(e) => {
                     error!("{}", e);
@@ -125,14 +118,20 @@ impl RPG {
         if args.len() >= 3 {
             match RPG::parse_point_allocations(&args) {
                 Ok(stats) => {
-                    if stats.vit <= 0 || stats.dex <= 0 || stats.str <= 0 {
+                    if stats.vit <= 0
+                        || stats.vit > 8
+                        || stats.dex <= 0
+                        || stats.dex > 8
+                        || stats.str <= 0
+                        || stats.str > 8
+                    {
                         return Some(Response::Message(whisper!(
                             username,
-                            "Point allocations must be positive numbers."
+                            "Point allocations must be values from 1 to 8."
                         )));
                     }
 
-                    let sum = stats.vit + stats.str + stats.dex;
+                    let sum = stats.vit + stats.dex + stats.str;
 
                     if sum != MAX_ALLOCATED_POINTS {
                         return Some(Response::Message(whisper!(
@@ -150,7 +149,7 @@ impl RPG {
 
                         return Some(Response::Message(privmsg!(
                             &privmsg.channel,
-                            "{}, successfully created your character! PagChomp",
+                            "{} successfully created a character! PagChomp",
                             username
                         )));
                     }
@@ -158,7 +157,7 @@ impl RPG {
                 Err(_) => {
                     return Some(Response::Message(whisper!(
                         username,
-                        "Point allocations are numerical values."
+                        "Point allocations must be values from 1 to 8."
                     )));
                 }
             }
@@ -191,9 +190,21 @@ impl RPG {
                     &privmsg.channel,
                     "{}, your character is deleted.",
                     username
-                )))
+                )));
             }
         }
+    }
+
+    fn print_inventory_item<T>(item: &Option<InventoryItem<T>>, equipped: bool) -> String {
+        if let Some(item) = item {
+            let mut out = item.name.to_string();
+            if equipped {
+                out += " (equipped)";
+            }
+            out += ", ";
+            return out;
+        }
+        String::new()
     }
 
     fn inventory_command_list(
@@ -215,14 +226,14 @@ impl RPG {
                         let mut out = String::new();
 
                         for inv_item in &inv.bag {
-                            print_inventory_item!(inv_item, out, false);
+                            out += &RPG::print_inventory_item(inv_item, false);
                         }
 
-                        print_inventory_item!(&inv.weapon, out, true);
-                        print_inventory_item!(&inv.ring, out, true);
-                        print_inventory_item!(&inv.helmet, out, true);
-                        print_inventory_item!(&inv.chestplate, out, true);
-                        print_inventory_item!(&inv.necklace, out, true);
+                        out += &RPG::print_inventory_item(&inv.weapon, true);
+                        /*out += &RPG::print_inventory_item(&inv.ring, true);
+                        out += &RPG::print_inventory_item(&inv.helmet, true);
+                        out += &RPG::print_inventory_item(&inv.necklace, true);
+                        out += &RPG::print_inventory_item(&inv.chestplate, true);*/
 
                         return Some(Response::Message(whisper!(
                             username,
