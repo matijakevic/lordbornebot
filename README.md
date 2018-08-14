@@ -12,3 +12,9 @@ A Twitch chat bot written in Rust
 ## Module system
 1. Implement modules::Module trait for some type (struct for example).
 2. Construct and add your type (Boxed) using init_modules function in main.rs.
+
+## Modules
+- Points - amodule for querying user's points.
+- Gamble - a module for points gambling.
+- Shape module (WIP) - a module for receiving points on successfully created shape in chat.
+- RPG module (WIP) - a large game module for MMORPGish dungeon experience.
