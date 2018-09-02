@@ -48,7 +48,7 @@ impl AFK {
                 } else {
                     return Some(Response::Message(privmsg!(
                         &privmsg.channel,
-                        "{} is now afk: {}.",
+                        "{} is now afk: {}",
                         &privmsg.tags["display-name"],
                         reason
                     )));
@@ -142,7 +142,7 @@ impl AFK {
                     } else {
                         return Some(Response::Message(privmsg!(
                             &privmsg.channel,
-                            "{} is back ({} ago): {}!",
+                            "{} is back ({} ago): {}",
                             privmsg.tags["display-name"],
                             &ago_str,
                             status.reason
