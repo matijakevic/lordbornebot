@@ -1,7 +1,7 @@
 use chrono::{Duration, Utc};
 use data::afk::*;
 use modules::Module;
-use rusqlite::Connection;
+use rusqlite::{Connection, Error};
 use std::path::Path;
 use twitch::parser::{CommandData, Message, PrivateMessage, Response};
 
@@ -59,8 +59,6 @@ impl AFK {
                 return None;
             }
         }
-
-        return None;
     }
 
     fn is_afk_command(&self, privmsg: &PrivateMessage, command: &CommandData) -> Option<Response> {
@@ -94,13 +92,16 @@ impl AFK {
                         )));
                     }
                 }
-                Err(e) => {
-                    error!("{}", e);
+                Err(Error::QueryReturnedNoRows) => {
                     return Some(Response::Message(privmsg!(
                         &privmsg.channel,
                         "{} is not afk.",
                         username,
-                    )));
+                    )))
+                }
+                Err(e) => {
+                    error!("{}", e);
+                    return None;
                 }
             }
         }
