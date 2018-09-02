@@ -163,11 +163,14 @@ impl AFK {
 impl Module for AFK {
     fn handle_message(&mut self, message: &Message) -> Option<Response> {
         match message {
-            Message::Command(privmsg, command) => match command.name.as_ref() {
-                "afk" => self.afk_command(&privmsg, &command),
-                "isafk" => self.is_afk_command(&privmsg, &command),
-                _ => return None,
-            },
+            Message::Command(privmsg, command) => {
+                self.check_if_back(&privmsg);
+                match command.name.as_ref() {
+                    "afk" => self.afk_command(&privmsg, &command),
+                    "isafk" => self.is_afk_command(&privmsg, &command),
+                    _ => return None,
+                }
+            }
             Message::Private(privmsg) => self.check_if_back(&privmsg),
             _ => return None,
         }
