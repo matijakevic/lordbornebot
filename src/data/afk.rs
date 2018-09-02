@@ -25,7 +25,7 @@ pub fn get_afk_status_by_username(
 ) -> Result<AFKStatus, Error> {
     connection.query_row(
         "SELECT AFK, Reason, Time FROM AFKStatus WHERE ID=(SELECT ID FROM Users WHERE Username=? LIMIT 1) LIMIT 1",
-        &[&username],
+        &[&username.to_lowercase()],
         |row| AFKStatus {
             afk: row.get(0),
             reason: row.get(1),
