@@ -96,7 +96,11 @@ impl AFK {
                 }
                 Err(e) => {
                     error!("{}", e);
-                    return None;
+                    return Some(Response::Message(privmsg!(
+                        &privmsg.channel,
+                        "{} is not afk.",
+                        username,
+                    )));
                 }
             }
         }
