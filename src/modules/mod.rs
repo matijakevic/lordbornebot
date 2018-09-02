@@ -1,3 +1,4 @@
+pub mod afk;
 pub mod gamble;
 pub mod points;
 pub mod rpg;

@@ -19,6 +19,7 @@ mod util;
 
 use bincode::{deserialize_from, serialize_into};
 use data::users::check_user;
+use modules::afk::AFK;
 use modules::gamble::Gamble;
 use modules::points::Points;
 use modules::rpg::RPG;
@@ -53,15 +54,17 @@ fn forward_to_modules(modules: &mut Vec<Box<Module>>, message: &Message, client:
 }
 
 fn init_modules(config: &Config, modules: &mut Vec<Box<Module>>) {
-    let points_module = Points::new(&config.database_path);
-    let gamble_module = Gamble::new(&config.database_path);
-    let shapes_module = Shapes::new(&config.database_path);
-    let rpg_module = RPG::new(&config.database_path);
+    //let points_module = Points::new(&config.database_path);
+    //let gamble_module = Gamble::new(&config.database_path);
+    //let shapes_module = Shapes::new(&config.database_path);
+    //let rpg_module = RPG::new(&config.database_path);
+    let afk_module = AFK::new(&config.database_path);
 
-    modules.push(Box::new(points_module));
-    modules.push(Box::new(gamble_module));
-    modules.push(Box::new(shapes_module));
-    modules.push(Box::new(rpg_module));
+    //modules.push(Box::new(points_module));
+    //modules.push(Box::new(gamble_module));
+    //modules.push(Box::new(shapes_module));
+    //modules.push(Box::new(rpg_module));
+    modules.push(Box::new(afk_module));
 }
 
 fn load_config() -> Config {

@@ -86,7 +86,7 @@ impl<'a> Parser<'a> {
                     let channel = captures.get(4).unwrap().as_str().trim_left_matches("#");
 
                     if text.starts_with(self.command_prefix) {
-                        let text = text.trim_left_matches(">>");
+                        let text = text.trim_left_matches(self.command_prefix);
                         let tokens: Vec<&str> = text.split(" ").collect();
 
                         if tokens.len() >= 1 && !tokens[0].is_empty() {
