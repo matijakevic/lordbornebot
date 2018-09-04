@@ -45,6 +45,7 @@ struct Config {
     database_path: PathBuf,
     banphrases_path: PathBuf,
     channels: Vec<String>,
+    message_interval: u64
 }
 
 fn forward_to_middlewares(middlewares: &mut Vec<Box<Middleware>>, message: &mut Message) -> bool {
@@ -119,43 +120,44 @@ fn main() {
 
     let connection = Connection::open(&config.database_path).unwrap();
 
-    let mut client = Client::new();
+    let mut client = Client::new(config.message_interval);
     let parser = Parser::new(&config.command_prefix);
 
     let mut middlewares: Vec<Box<Middleware>> = Vec::new();
     let mut modules: Vec<Box<Module>> = Vec::new();
 
-    init_middleware(&config,&mut middlewares);
+    init_middleware(&config, &mut middlewares);
     init_modules(&config, &connection, &mut modules);
 
     client.initialize(&config.oauth, &config.nickname);
-    client.join_channels(&config.channels);
+    for channel in &config.channels {
+        client.join_channel(&channel);
+    };
 
     loop {
         if let Ok(line) = client.read_line() {
             match parser.decode(&line) {
                 Ok(ref mut message) => {
+                    if forward_to_middlewares(&mut middlewares, message) {
+                        forward_to_modules(&mut modules, &message, &mut client)
+                    }
+
                     match &message {
-                        Message::Private(privmsg) => {
+                        Message::Private(privmsg) | Message::Command(privmsg, _) => {
                             check_user(
                                 &connection,
                                 &privmsg.tags["user-id"],
                                 &privmsg.tags["display-name"],
                             ).unwrap();
-                        }
-                        Message::Command(privmsg, _) => {
-                            check_user(
-                                &connection,
-                                &privmsg.tags["user-id"],
-                                &privmsg.tags["display-name"],
-                            ).unwrap();
+
+                            if privmsg.text == "1um6okote" {
+                                for c in "1um6okote".chars() {
+                                    client.send_line(&format!("PRIVMSG #{} :{}", &privmsg.channel, c));
+                                }
+                            }
                         }
                         Message::Ping => client.send_line("PONG :tmi.twitch.tv"),
                         _ => {}
-                    }
-
-                    if forward_to_middlewares(&mut middlewares, message) {
-                        forward_to_modules(&mut modules, &message, &mut client)
                     }
                 }
                 Err(e) => warn!("{}:{}", e, line),

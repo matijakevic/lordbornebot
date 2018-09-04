@@ -1,54 +1,61 @@
 use std::io;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::net::TcpStream;
+use std::thread;
+use std::sync::mpsc::{Sender, Receiver, channel};
+use std::time::Duration;
+
+use twitch::parser::Message;
 
 pub struct Client {
     stream: TcpStream,
     reader: BufReader<TcpStream>,
-    writer: BufWriter<TcpStream>
+    sender: Sender<String>,
 }
 
 impl Client {
-    pub fn new() -> Client {
+    pub fn new(interval: u64) -> Client {
         let stream = TcpStream::connect("irc.chat.twitch.tv:6667").unwrap();
+
+        let (sender, receiver) = channel();
+
+        let mut writer = BufWriter::new(stream.try_clone().unwrap());
+
+        thread::spawn(move || {
+            loop {
+                match receiver.recv() {
+                    Ok(message) => {
+                        write!(writer, "{}\r\n", message).unwrap();
+                        writer.flush().unwrap();
+                    },
+                    Err(e) => {
+                        error!("{}", e);
+                    }
+                }
+
+                thread::sleep(Duration::from_millis(interval));
+            }
+        });
 
         Client {
             reader: BufReader::new(stream.try_clone().unwrap()),
-            writer: BufWriter::new(stream.try_clone().unwrap()),
             stream,
+            sender,
         }
     }
 
     pub fn initialize(&mut self, oauth: &str, nick: &str) {
-        write!(&mut self.writer, "PASS {}\r\n", oauth).unwrap();
-        write!(&mut self.writer, "NICK {}\r\n", nick).unwrap();
-        write!(&mut self.writer, "CAP REQ :twitch.tv/tags\r\n").unwrap();
-        self.flush();
+        self.send_line(&format!("PASS {}\r\n", oauth));
+        self.send_line(&format!("NICK {}\r\n", oauth));
+        self.send_line("CAP REQ :twitch.tv/tags\r\n");
     }
 
-    fn flush(&mut self) {
-        self.writer.flush().unwrap();
+    pub fn send_line(&mut self, line: &str) {
+        self.sender.send(line.to_string()).unwrap();
     }
 
     pub fn join_channel(&mut self, channel: &str) {
         self.send_line(&format!("JOIN #{}", channel));
-    }
-
-    pub fn join_channels(&mut self, channels: &Vec<String>) {
-        for channel in channels {
-            self.send_line_no_flush(&format!("JOIN #{}", channel));
-        }
-
-        self.flush();
-    }
-
-    pub fn send_line(&mut self, line: &str) {
-        self.send_line_no_flush(line);
-        self.flush();
-    }
-
-    pub fn send_line_no_flush(&mut self, line: &str) {
-        write!(self.writer, "{}\r\n", line).unwrap();
     }
 
     pub fn read_line(&mut self) -> io::Result<String> {

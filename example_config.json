@@ -4,6 +4,7 @@
     "command_prefix": "<command prefix>",
     "database_path": "<SQLite database file path>",
     "banphrases_path": "<banphrase path>",
+    "message_interval": "<message interval>",
     "channels": [
         "<channel1>", "<channel2>"
     ]
