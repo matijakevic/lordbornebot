@@ -3,7 +3,7 @@ use data::afk::*;
 use modules::Module;
 use rusqlite::{Connection, Error};
 use std::path::Path;
-use twitch::parser::{CommandData, Message, PrivateMessage, Response};
+use twitch::parser::{CommandData, Message, PrivateMessage};
 
 pub struct AFK {
     connection: Connection,
@@ -16,7 +16,7 @@ impl AFK {
         }
     }
 
-    fn afk_command(&self, privmsg: &PrivateMessage, command: &CommandData) -> Option<Response> {
+    fn afk_command(&self, privmsg: &PrivateMessage, command: &CommandData) -> Option<Message> {
         let id = &privmsg.tags["user-id"];
 
         match get_afk_status(&self.connection, &id) {
@@ -40,18 +40,18 @@ impl AFK {
         match set_afk_status(&self.connection, id, reason) {
             Ok(()) => {
                 if reason.is_empty() {
-                    return Some(Response::Message(privmsg!(
+                    return Some(privmsg!(
                         &privmsg.channel,
                         "{} is now afk.",
                         &privmsg.tags["display-name"]
-                    )));
+                    ));
                 } else {
-                    return Some(Response::Message(privmsg!(
+                    return Some(privmsg!(
                         &privmsg.channel,
                         "{} is now afk: {}",
                         &privmsg.tags["display-name"],
                         reason
-                    )));
+                    ));
                 }
             }
             Err(e) => {
@@ -61,7 +61,7 @@ impl AFK {
         }
     }
 
-    fn is_afk_command(&self, privmsg: &PrivateMessage, command: &CommandData) -> Option<Response> {
+    fn is_afk_command(&self, privmsg: &PrivateMessage, command: &CommandData) -> Option<Message> {
         if command.args.len() >= 1 {
             let username = &command.args[0];
 
@@ -77,27 +77,27 @@ impl AFK {
                             ago.num_seconds() - days * 24 * 60 * 60 - hours * 60 * 60 - mins * 60;
                         let ago_str = format!("{}d {}h {}m {}s", days, hours, mins, secs);
 
-                        return Some(Response::Message(privmsg!(
+                        return Some(privmsg!(
                             &privmsg.channel,
                             "{} is afk ({} ago): {}.",
                             username,
                             &ago_str,
                             status.reason
-                        )));
+                        ));
                     } else {
-                        return Some(Response::Message(privmsg!(
+                        return Some(privmsg!(
                             &privmsg.channel,
                             "{} is not afk.",
                             username,
-                        )));
+                        ));
                     }
                 }
                 Err(Error::QueryReturnedNoRows) => {
-                    return Some(Response::Message(privmsg!(
+                    return Some(privmsg!(
                         &privmsg.channel,
                         "{} is not afk.",
                         username,
-                    )))
+                    ));
                 }
                 Err(e) => {
                     error!("{}", e);
@@ -109,7 +109,7 @@ impl AFK {
         return None;
     }
 
-    fn check_if_back(&self, privmsg: &PrivateMessage) -> Option<Response> {
+    fn check_if_back(&self, privmsg: &PrivateMessage) -> Option<Message> {
         let id = &privmsg.tags["user-id"];
 
         match get_afk_status(&self.connection, &id) {
@@ -134,20 +134,20 @@ impl AFK {
                     }
 
                     if status.reason.is_empty() {
-                        return Some(Response::Message(privmsg!(
+                        return Some(privmsg!(
                             &privmsg.channel,
                             "{} is back ({} ago)!",
                             privmsg.tags["display-name"],
                             &ago_str
-                        )));
+                        ));
                     } else {
-                        return Some(Response::Message(privmsg!(
+                        return Some(privmsg!(
                             &privmsg.channel,
                             "{} is back ({} ago): {}",
                             privmsg.tags["display-name"],
                             &ago_str,
                             status.reason
-                        )));
+                        ));
                     }
                 } else {
                     return None;
@@ -162,7 +162,7 @@ impl AFK {
 }
 
 impl Module for AFK {
-    fn handle_message(&mut self, message: &Message) -> Option<Response> {
+    fn handle_message(&mut self, message: &Message) -> Option<Message> {
         match message {
             Message::Command(privmsg, command) => {
                 self.check_if_back(&privmsg);

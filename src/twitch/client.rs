@@ -5,7 +5,7 @@ use std::net::TcpStream;
 pub struct Client {
     stream: TcpStream,
     reader: BufReader<TcpStream>,
-    writer: BufWriter<TcpStream>,
+    writer: BufWriter<TcpStream>
 }
 
 impl Client {

@@ -3,7 +3,7 @@ use modules::Module;
 use rusqlite::Connection;
 use std::collections::HashMap;
 use std::path::Path;
-use twitch::parser::{Message, Response};
+use twitch::parser::Message;
 
 struct ShapeData {
     stage: i32,
@@ -31,7 +31,7 @@ impl Shapes {
 }
 
 impl Module for Shapes {
-    fn handle_message(&mut self, message: &Message) -> Option<Response> {
+    fn handle_message(&mut self, message: &Message) -> Option<Message> {
         match message {
             Message::Private(privmsg) => {
                 let tokens: Vec<&str> = privmsg.text.split(" ").collect();
@@ -48,11 +48,11 @@ impl Module for Shapes {
                     match instance.stage {
                         0 => {
                             if tokens.len() == 3 && tokens[0] == tokens[1] && tokens[1] == tokens[2]
-                            {
-                                instance.token = tokens[0].to_string();
-                                instance.stage += 1;
-                                false
-                            } else {
+                                {
+                                    instance.token = tokens[0].to_string();
+                                    instance.stage += 1;
+                                    false
+                                } else {
                                 false
                             }
                         }
@@ -66,10 +66,10 @@ impl Module for Shapes {
                         2 => if tokens.len() == 2
                             && tokens[0] == tokens[1]
                             && tokens[0] == instance.token
-                        {
-                            instance.stage += 1;
-                            false
-                        } else {
+                            {
+                                instance.stage += 1;
+                                false
+                            } else {
                             instance.reset();
                             false
                         },
@@ -78,11 +78,11 @@ impl Module for Shapes {
                             && tokens[1] == tokens[2]
                             && tokens[0] == instance.token
                             && tokens[1] == instance.token
-                        {
-                            instance.reset();
-                            token = instance.token.clone();
-                            true
-                        } else {
+                            {
+                                instance.reset();
+                                token = instance.token.clone();
+                                true
+                            } else {
                             instance.reset();
                             false
                         },
@@ -98,7 +98,7 @@ impl Module for Shapes {
                         Ok(curr_points) => {
                             let new_points = curr_points + 100;
                             match set_points(&self.connection, &privmsg.tags["user-id"], new_points) {
-                                Ok(_) => return Some(Response::Message(privmsg!(&privmsg.channel, "{} completed the {} E shape, won 100 points and now has {} points. PagChomp", &privmsg.tags["display-name"], &token, new_points))),
+                                Ok(_) => return Some(privmsg!(&privmsg.channel, "{} completed the {} E shape, won 100 points and now has {} points. PagChomp", &privmsg.tags["display-name"], &token, new_points)),
                                 Err(e) => {
                                     warn!("{}", e);
                                     return None;

@@ -4,7 +4,7 @@ use rusqlite::Connection;
 
 use std::path::Path;
 use std::str::FromStr;
-use twitch::parser::{CommandData, Message, PrivateMessage, Response};
+use twitch::parser::{CommandData, Message, PrivateMessage};
 
 const MAX_ALLOCATED_POINTS: i32 = 10;
 
@@ -30,7 +30,7 @@ impl RPG {
         &self,
         privmsg: &PrivateMessage,
         command: &CommandData,
-    ) -> Option<Response> {
+    ) -> Option<Message> {
         let args = &command.args;
         let username = &privmsg.tags["display-name"];
 
@@ -41,7 +41,7 @@ impl RPG {
                 Ok(id) => match load_player(&self.connection, &id) {
                     Ok(Some(player)) => {
                         let dmg = player.get_damage();
-                        return Some(Response::Message(privmsg!(
+                        return Some(privmsg!(
                             &privmsg.channel,
                             "{}'s stats: VIT {}, STR {}, DEX {}; HP {}, DMG: {} ({})",
                             target,
@@ -51,13 +51,13 @@ impl RPG {
                             player.state.hp,
                             dmg.0,
                             dmg.1
-                        )));
+                        ));
                     }
                     Ok(None) => {
-                        return Some(Response::Message(whisper!(
+                        return Some(whisper!(
                             username,
                             "That user doesn't have a character created"
-                        )));
+                        ));
                     }
                     Err(e) => {
                         error!("{}", e);
@@ -65,7 +65,7 @@ impl RPG {
                     }
                 },
                 Err(_) => {
-                    return Some(Response::Message(whisper!(username, "No such user found.")));
+                    return Some(whisper!(username, "No such user found."));
                 }
             }
         } else {
@@ -73,7 +73,7 @@ impl RPG {
             match load_player(&self.connection, &privmsg.tags["user-id"]) {
                 Ok(Some(player)) => {
                     let dmg = player.get_damage();
-                    return Some(Response::Message(privmsg!(
+                    return Some(privmsg!(
                         &privmsg.channel,
                         "{}'s stats: VIT {}, STR {}, DEX {}; HP {}, DMG: {} ({})",
                         username.to_lowercase(),
@@ -83,13 +83,13 @@ impl RPG {
                         player.state.hp,
                         dmg.0,
                         dmg.1
-                    )));
+                    ));
                 }
                 Ok(None) => {
-                    return Some(Response::Message(whisper!(
+                    return Some(whisper!(
                         username,
                         "That user doesn't have a character created."
-                    )));
+                    ));
                 }
                 Err(e) => {
                     error!("{}", e);
@@ -103,16 +103,16 @@ impl RPG {
         &mut self,
         privmsg: &PrivateMessage,
         command: &CommandData,
-    ) -> Option<Response> {
+    ) -> Option<Message> {
         let args = &command.args;
         let username = &privmsg.tags["display-name"];
 
         if let Ok(Some(_)) = load_player(&self.connection, &privmsg.tags["user-id"]) {
-            return Some(Response::Message(privmsg!(
+            return Some(privmsg!(
                 &privmsg.channel,
                 "{}, your character is already created.",
                 username,
-            )));
+            ));
         }
 
         if args.len() >= 3 {
@@ -125,21 +125,21 @@ impl RPG {
                         || stats.str <= 0
                         || stats.str > 8
                     {
-                        return Some(Response::Message(whisper!(
+                        return Some(whisper!(
                             username,
                             "Point allocations must be values from 1 to 8."
-                        )));
+                        ));
                     }
 
                     let sum = stats.vit + stats.dex + stats.str;
 
                     if sum != MAX_ALLOCATED_POINTS {
-                        return Some(Response::Message(whisper!(
+                        return Some(whisper!(
                             username,
                             "You have to allocate {} points, but you've allocated {}.",
                             MAX_ALLOCATED_POINTS,
                             sum
-                        )));
+                        ));
                     } else {
                         save_player(
                             &self.connection,
@@ -147,25 +147,25 @@ impl RPG {
                             &Player::new(stats),
                         );
 
-                        return Some(Response::Message(privmsg!(
+                        return Some(privmsg!(
                             &privmsg.channel,
                             "{} successfully created a character! PagChomp",
                             username
-                        )));
+                        ));
                     }
                 }
                 Err(_) => {
-                    return Some(Response::Message(whisper!(
+                    return Some(whisper!(
                         username,
                         "Point allocations must be values from 1 to 8."
-                    )));
+                    ));
                 }
             }
         } else {
-            return Some(Response::Message(whisper!(
+            return Some(whisper!(
                 username,
                 "Command usage: >>create <vitality> <strength> <dexterity>"
-            )));
+            ));
         }
     }
 
@@ -173,24 +173,24 @@ impl RPG {
         &mut self,
         privmsg: &PrivateMessage,
         command: &CommandData,
-    ) -> Option<Response> {
+    ) -> Option<Message> {
         let username = &privmsg.tags["display-name"];
 
         match delete_player(&self.connection, &privmsg.tags["user-id"]) {
             Err(e) => {
                 error!("{}", e);
-                return Some(Response::Message(privmsg!(
+                return Some(privmsg!(
                     &privmsg.channel,
                     "{}, failed to delete your character.",
                     username,
-                )));
+                ));
             }
             Ok(_) => {
-                return Some(Response::Message(privmsg!(
+                return Some(privmsg!(
                     &privmsg.channel,
                     "{}, your character is deleted.",
                     username
-                )));
+                ));
             }
         }
     }
@@ -211,7 +211,7 @@ impl RPG {
         &self,
         privmsg: &PrivateMessage,
         command: &CommandData,
-    ) -> Option<Response> {
+    ) -> Option<Message> {
         let args = &command.args;
         let username = &privmsg.tags["display-name"];
 
@@ -235,11 +235,11 @@ impl RPG {
                         out += &RPG::print_inventory_item(&inv.necklace, true);
                         out += &RPG::print_inventory_item(&inv.chestplate, true);*/
 
-                        return Some(Response::Message(whisper!(
+                        return Some(whisper!(
                             username,
                             "Your inventory: {}",
                             out.trim_right_matches(", ")
-                        )));
+                        ));
                     }
                     return None;
                 }
@@ -256,7 +256,7 @@ impl RPG {
         &self,
         privmsg: &PrivateMessage,
         command: &CommandData,
-    ) -> Option<Response> {
+    ) -> Option<Message> {
         None
     }
 
@@ -264,32 +264,32 @@ impl RPG {
         &self,
         privmsg: &PrivateMessage,
         command: &CommandData,
-    ) -> Option<Response> {
+    ) -> Option<Message> {
         let args = &command.args;
         let username = &privmsg.tags["display-name"];
 
         if args.len() < 1 {
-            return Some(Response::Message(whisper!(
+            return Some(whisper!(
                 username,
                 "Command usage: >>inventory <list< weapons|armor|consumables>>|<info <item_name>>"
-            )));
+            ));
         }
 
         match args[0].as_ref() {
             "list" => return self.inventory_command_list(privmsg, command),
             "info" => return self.inventory_command_info(privmsg, command),
             _ => {
-                return Some(Response::Message(whisper!(
+                return Some(whisper!(
                 username,
                 "Command usage: >>inventory <list<all|weapons|armor|consumables>|info <item_name>>"
-            )));
+            ));
             }
         }
     }
 }
 
 impl Module for RPG {
-    fn handle_message(&mut self, message: &Message) -> Option<Response> {
+    fn handle_message(&mut self, message: &Message) -> Option<Message> {
         if let Message::Command(privmsg, command) = message {
             return match command.name.as_ref() {
                 "delete" => self.delete_command(privmsg, command),
