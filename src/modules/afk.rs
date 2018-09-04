@@ -10,9 +10,9 @@ pub struct AFK {
 }
 
 impl AFK {
-    pub fn new(db_path: &Path) -> AFK {
+    pub fn new(connection: Connection) -> AFK {
         AFK {
-            connection: Connection::open(db_path).unwrap(),
+            connection,
         }
     }
 

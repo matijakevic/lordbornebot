@@ -3,6 +3,7 @@
     "nickname": "<bot's nickname>",
     "command_prefix": "<command prefix>",
     "database_path": "<SQLite database file path>",
+    "banphrases_path": "<banphrase path>",
     "channels": [
         "<channel1>", "<channel2>"
     ]

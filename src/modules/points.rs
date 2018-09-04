@@ -9,9 +9,9 @@ pub struct Points {
 }
 
 impl Points {
-    pub fn new(db_path: &Path) -> Points {
+    pub fn new(connection: Connection) -> Points {
         Points {
-            connection: Connection::open(db_path).unwrap(),
+            connection
         }
     }
 

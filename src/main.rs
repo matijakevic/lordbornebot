@@ -16,6 +16,7 @@ mod twitch;
 mod data;
 mod modules;
 mod util;
+mod middleware;
 
 use bincode::{deserialize_from, serialize_into};
 use data::users::check_user;
@@ -32,6 +33,9 @@ use std::path::PathBuf;
 use twitch::client::Client;
 use twitch::parser::{Message, Parser};
 use util::load_json_from_file;
+use middleware::Middleware;
+use middleware::filter::Filter;
+use std::fs::File;
 
 #[derive(Deserialize)]
 struct Config {
@@ -39,8 +43,20 @@ struct Config {
     nickname: String,
     command_prefix: String,
     database_path: PathBuf,
+    banphrases_path: PathBuf,
     channels: Vec<String>,
 }
+
+fn forward_to_middlewares(middlewares: &mut Vec<Box<Middleware>>, message: &mut Message) -> bool {
+    for middleware in middlewares {
+        if !middleware.process_message(message) {
+            return false;
+        }
+    }
+
+    true
+}
+
 
 fn forward_to_modules(modules: &mut Vec<Box<Module>>, message: &Message, client: &mut Client) {
     for module in modules {
@@ -53,18 +69,35 @@ fn forward_to_modules(modules: &mut Vec<Box<Module>>, message: &Message, client:
     }
 }
 
-fn init_modules(config: &Config, modules: &mut Vec<Box<Module>>) {
-    //let points_module = Points::new(&config.database_path);
-    //let gamble_module = Gamble::new(&config.database_path);
-    //let shapes_module = Shapes::new(&config.database_path);
-    //let rpg_module = RPG::new(&config.database_path);
-    let afk_module = AFK::new(&config.database_path);
+fn create_db_connection(path: &PathBuf) -> Connection {
+    Connection::open(path).unwrap()
+}
 
-    //modules.push(Box::new(points_module));
-    //modules.push(Box::new(gamble_module));
-    //modules.push(Box::new(shapes_module));
+fn init_modules(config: &Config, connection: &Connection, modules: &mut Vec<Box<Module>>) {
+    let points_module = Points::new(create_db_connection(&config.database_path));
+    let gamble_module = Gamble::new(create_db_connection(&config.database_path));
+    let shapes_module = Shapes::new(create_db_connection(&config.database_path));
+    //let rpg_module = RPG::new(&config.database_path);
+    let afk_module = AFK::new(create_db_connection(&config.database_path));
+
+    modules.push(Box::new(points_module));
+    modules.push(Box::new(gamble_module));
+    modules.push(Box::new(shapes_module));
     //modules.push(Box::new(rpg_module));
     modules.push(Box::new(afk_module));
+}
+
+fn load_banphrases(path: &PathBuf) -> Result<Vec<String>, std::io::Error> {
+    let file = File::open(path)?;
+    Ok(serde_json::from_reader(file).unwrap())
+}
+
+fn init_middleware(config: &Config, middlewares: &mut Vec<Box<Middleware>>) {
+    // Order matters! :)
+    let phrases = load_banphrases(&config.banphrases_path).unwrap();
+    let filter_middleware = Filter::new(phrases);
+
+    middlewares.push(Box::new(filter_middleware));
 }
 
 fn load_config() -> Config {
@@ -88,9 +121,12 @@ fn main() {
 
     let mut client = Client::new();
     let parser = Parser::new(&config.command_prefix);
+
+    let mut middlewares: Vec<Box<Middleware>> = Vec::new();
     let mut modules: Vec<Box<Module>> = Vec::new();
 
-    init_modules(&config, &mut modules);
+    init_middleware(&config,&mut middlewares);
+    init_modules(&config, &connection, &mut modules);
 
     client.initialize(&config.oauth, &config.nickname);
     client.join_channels(&config.channels);
@@ -98,7 +134,7 @@ fn main() {
     loop {
         if let Ok(line) = client.read_line() {
             match parser.decode(&line) {
-                Ok(message) => {
+                Ok(ref mut message) => {
                     match &message {
                         Message::Private(privmsg) => {
                             check_user(
@@ -118,7 +154,9 @@ fn main() {
                         _ => {}
                     }
 
-                    forward_to_modules(&mut modules, &message, &mut client)
+                    if forward_to_middlewares(&mut middlewares, message) {
+                        forward_to_modules(&mut modules, &message, &mut client)
+                    }
                 }
                 Err(e) => warn!("{}:{}", e, line),
             }

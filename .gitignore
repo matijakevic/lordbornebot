@@ -3,3 +3,4 @@
 config.json
 data.db
 Cargo.lock
+banphrases.json

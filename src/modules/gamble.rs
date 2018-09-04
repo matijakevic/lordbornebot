@@ -10,9 +10,9 @@ pub struct Gamble {
 }
 
 impl Gamble {
-    pub fn new(db_path: &Path) -> Gamble {
+    pub fn new(connection: Connection) -> Gamble {
         Gamble {
-            connection: Connection::open(db_path).unwrap(),
+            connection,
         }
     }
 

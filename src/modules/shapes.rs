@@ -22,9 +22,9 @@ pub struct Shapes {
 }
 
 impl Shapes {
-    pub fn new(db_path: &Path) -> Shapes {
+    pub fn new(connection: Connection) -> Shapes {
         Shapes {
-            connection: Connection::open(db_path).unwrap(),
+            connection,
             channel_shape: HashMap::new(),
         }
     }
