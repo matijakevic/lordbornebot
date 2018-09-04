@@ -45,7 +45,7 @@ struct Config {
     database_path: PathBuf,
     banphrases_path: PathBuf,
     channels: Vec<String>,
-    message_interval: u64
+    message_interval: u64,
 }
 
 fn forward_to_middlewares(middlewares: &mut Vec<Box<Middleware>>, message: &mut Message) -> bool {
@@ -149,12 +149,6 @@ fn main() {
                                 &privmsg.tags["user-id"],
                                 &privmsg.tags["display-name"],
                             ).unwrap();
-
-                            if privmsg.text == "1um6okote" {
-                                for c in "1um6okote".chars() {
-                                    client.send_line(&format!("PRIVMSG #{} :{}", &privmsg.channel, c));
-                                }
-                            }
                         }
                         Message::Ping => client.send_line("PONG :tmi.twitch.tv"),
                         _ => {}
