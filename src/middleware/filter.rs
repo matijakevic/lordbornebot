@@ -19,7 +19,7 @@ impl Middleware for Filter {
         for banned_phrase in &self.banned_phrases {
             match message {
                 Message::Private(privmsg) | Message::Command(privmsg, _) => {
-                    if privmsg.text.to_lowercase().contains(banned_phrase.to_lowercase()) {
+                    if privmsg.text.to_lowercase().contains(&banned_phrase.to_lowercase()) {
                         return false
                     }
                 },
