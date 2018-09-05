@@ -2,7 +2,6 @@ use chrono::{Duration, Utc};
 use data::afk::*;
 use modules::Module;
 use rusqlite::{Connection, Error};
-use std::path::Path;
 use twitch::parser::{CommandData, Message, PrivateMessage};
 
 pub struct AFK {
@@ -11,9 +10,7 @@ pub struct AFK {
 
 impl AFK {
     pub fn new(connection: Connection) -> AFK {
-        AFK {
-            connection,
-        }
+        AFK { connection }
     }
 
     fn afk_command(&self, privmsg: &PrivateMessage, command: &CommandData) -> Option<Message> {
@@ -31,7 +28,7 @@ impl AFK {
             }
         }
 
-        let reason = if command.args.len() >= 1 {
+        let reason = if !command.args.is_empty() {
             &command.raw_args
         } else {
             ""
@@ -40,29 +37,29 @@ impl AFK {
         match set_afk_status(&self.connection, id, reason) {
             Ok(()) => {
                 if reason.is_empty() {
-                    return Some(privmsg!(
+                    Some(privmsg!(
                         &privmsg.channel,
                         "{} is now afk.",
                         &privmsg.tags["display-name"]
-                    ));
+                    ))
                 } else {
-                    return Some(privmsg!(
+                    Some(privmsg!(
                         &privmsg.channel,
                         "{} is now afk: {}",
                         &privmsg.tags["display-name"],
                         reason
-                    ));
+                    ))
                 }
             }
             Err(e) => {
                 error!("{}", e);
-                return None;
+                None
             }
         }
     }
 
     fn is_afk_command(&self, privmsg: &PrivateMessage, command: &CommandData) -> Option<Message> {
-        if command.args.len() >= 1 {
+        if !command.args.is_empty() {
             let username = &command.args[0];
 
             match get_afk_status_by_username(&self.connection, username) {
@@ -85,19 +82,11 @@ impl AFK {
                             status.reason
                         ));
                     } else {
-                        return Some(privmsg!(
-                            &privmsg.channel,
-                            "{} is not afk.",
-                            username,
-                        ));
+                        return Some(privmsg!(&privmsg.channel, "{} is not afk.", username,));
                     }
                 }
                 Err(Error::QueryReturnedNoRows) => {
-                    return Some(privmsg!(
-                        &privmsg.channel,
-                        "{} is not afk.",
-                        username,
-                    ));
+                    return Some(privmsg!(&privmsg.channel, "{} is not afk.", username,));
                 }
                 Err(e) => {
                     error!("{}", e);
@@ -106,7 +95,7 @@ impl AFK {
             }
         }
 
-        return None;
+        None
     }
 
     fn check_if_back(&self, privmsg: &PrivateMessage) -> Option<Message> {
@@ -134,28 +123,28 @@ impl AFK {
                     }
 
                     if status.reason.is_empty() {
-                        return Some(privmsg!(
+                        Some(privmsg!(
                             &privmsg.channel,
                             "{} is back ({} ago)!",
                             privmsg.tags["display-name"],
                             &ago_str
-                        ));
+                        ))
                     } else {
-                        return Some(privmsg!(
+                        Some(privmsg!(
                             &privmsg.channel,
                             "{} is back ({} ago): {}",
                             privmsg.tags["display-name"],
                             &ago_str,
                             status.reason
-                        ));
+                        ))
                     }
                 } else {
-                    return None;
+                    None
                 }
             }
             Err(e) => {
                 error!("{}", e);
-                return None;
+                None
             }
         }
     }
@@ -169,11 +158,11 @@ impl Module for AFK {
                 match command.name.as_ref() {
                     "afk" => self.afk_command(&privmsg, &command),
                     "isafk" => self.is_afk_command(&privmsg, &command),
-                    _ => return None,
+                    _ => None,
                 }
             }
             Message::Private(privmsg) => self.check_if_back(&privmsg),
-            _ => return None,
+            _ => None
         }
     }
 }

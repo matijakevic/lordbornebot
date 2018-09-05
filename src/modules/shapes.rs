@@ -2,7 +2,6 @@ use data::points::{get_points, set_points};
 use modules::Module;
 use rusqlite::Connection;
 use std::collections::HashMap;
-use std::path::Path;
 use twitch::parser::Message;
 
 struct ShapeData {
@@ -34,7 +33,7 @@ impl Module for Shapes {
     fn handle_message(&mut self, message: &Message) -> Option<Message> {
         match message {
             Message::Private(privmsg) => {
-                let tokens: Vec<&str> = privmsg.text.split(" ").collect();
+                let tokens: Vec<&str> = privmsg.text.split(' ').collect();
 
                 let mut token = String::new();
                 let finished = {
@@ -48,11 +47,11 @@ impl Module for Shapes {
                     match instance.stage {
                         0 => {
                             if tokens.len() == 3 && tokens[0] == tokens[1] && tokens[1] == tokens[2]
-                                {
-                                    instance.token = tokens[0].to_string();
-                                    instance.stage += 1;
-                                    false
-                                } else {
+                            {
+                                instance.token = tokens[0].to_string();
+                                instance.stage += 1;
+                                false
+                            } else {
                                 false
                             }
                         }
@@ -66,10 +65,10 @@ impl Module for Shapes {
                         2 => if tokens.len() == 2
                             && tokens[0] == tokens[1]
                             && tokens[0] == instance.token
-                            {
-                                instance.stage += 1;
-                                false
-                            } else {
+                        {
+                            instance.stage += 1;
+                            false
+                        } else {
                             instance.reset();
                             false
                         },
@@ -78,11 +77,11 @@ impl Module for Shapes {
                             && tokens[1] == tokens[2]
                             && tokens[0] == instance.token
                             && tokens[1] == instance.token
-                            {
-                                instance.reset();
-                                token = instance.token.clone();
-                                true
-                            } else {
+                        {
+                            instance.reset();
+                            token = instance.token.clone();
+                            true
+                        } else {
                             instance.reset();
                             false
                         },
@@ -112,9 +111,9 @@ impl Module for Shapes {
                     }
                 }
 
-                return None;
+                None
             }
-            _ => return None,
+            _ => None,
         }
     }
 }

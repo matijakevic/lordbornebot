@@ -59,12 +59,12 @@ impl<'a> Parser<'a> {
     fn parse_tags(tags: &str) -> HashMap<String, String> {
         let mut map = HashMap::new();
 
-        for tag_pair in tags.split(";") {
-            let tag_tokens: Vec<&str> = tag_pair.split("=").collect();
+        for tag_pair in tags.split(';') {
+            let tag_tokens: Vec<&str> = tag_pair.split('=').collect();
             map.insert(tag_tokens[0].to_string(), tag_tokens[1].to_string());
         }
 
-        return map;
+        map
     }
 
     pub fn decode(&self, line: &str) -> Result<Message, &'static str> {
@@ -78,21 +78,22 @@ impl<'a> Parser<'a> {
                     let text = captures.get(5).unwrap().as_str();
                     let tags = Parser::parse_tags(captures.get(1).unwrap().as_str());
                     let sender = captures.get(2).unwrap().as_str();
-                    let channel = captures.get(4).unwrap().as_str().trim_left_matches("#");
+                    let channel = captures.get(4).unwrap().as_str().trim_left_matches('#');
 
                     if text.starts_with(self.command_prefix) {
                         let text = text.trim_left_matches(self.command_prefix);
-                        let tokens: Vec<&str> = text.split(" ").collect();
+                        let tokens: Vec<&str> = text.split(' ').collect();
 
-                        if tokens.len() >= 1 && !tokens[0].is_empty() {
+                        if !tokens.is_empty() && !tokens[0].is_empty() {
                             let name = tokens[0].to_string();
                             let mut raw_args = String::new();
-                            let mut args = Vec::new();
 
-                            if tokens.len() > 1 {
-                                raw_args = (&text[text.find(" ").unwrap()..]).to_string();
-                                args = tokens[1..].into_iter().map(|s| s.to_string()).collect();
-                            }
+                            let mut args = if tokens.len() > 1 {
+                                raw_args = (&text[text.find(' ').unwrap()..]).to_string();
+                                tokens[1..].into_iter().map(|s| s.to_string()).collect()
+                            } else {
+                                Vec::new()
+                            };
 
                             return Ok(Message::Command(
                                 PrivateMessage {
@@ -113,7 +114,7 @@ impl<'a> Parser<'a> {
                     }
 
                     return Ok(Message::Private(PrivateMessage {
-                        tags: tags,
+                        tags,
                         sender: sender.to_string(),
                         channel: channel.to_string(),
                         text: text.to_string(),
@@ -133,9 +134,9 @@ impl<'a> Parser<'a> {
     pub fn encode(message: &Message) -> Result<String, &'static str> {
         match message {
             Message::Private(privmsg) => {
-                return Ok(format!("PRIVMSG #{} :{}", privmsg.channel, privmsg.text));
+                Ok(format!("PRIVMSG #{} :{}", privmsg.channel, privmsg.text))
             }
-            _ => return Err("Cannot encode this message"),
+            _ => Err("Cannot encode this message"),
         }
     }
 }

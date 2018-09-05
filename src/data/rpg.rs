@@ -1,6 +1,5 @@
 use bincode::{deserialize, serialize};
 use rusqlite::{Connection, Error};
-use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize)]
 pub struct Player {
@@ -44,10 +43,8 @@ impl Player {
 
     pub fn can_equip_shield(&self) -> bool {
         match &self.inventory.weapon {
-            Some(inv_item) => {
-                return !inv_item.item.two_handed;
-            }
-            None => return true,
+            Some(inv_item) => !inv_item.item.two_handed,
+            None => true,
         }
     }
 
@@ -61,7 +58,7 @@ impl Player {
 
             dmg_crit += inv_item.item.crit_dmg;
         }
-        return (dmg, dmg_crit);
+        (dmg, dmg_crit)
     }
 }
 
@@ -151,8 +148,8 @@ pub fn load_player(connection: &Connection, twitch_id: &str) -> Result<Option<Pl
     )?;
 
     match data {
-        Some(player_data) => return Ok(Some(deserialize(&player_data).unwrap())),
-        None => return Ok(None),
+        Some(player_data) => Ok(Some(deserialize(&player_data).unwrap())),
+        None => Ok(None),
     }
 }
 

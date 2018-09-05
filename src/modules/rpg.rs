@@ -19,7 +19,7 @@ impl RPG {
         }
     }
 
-    pub fn parse_point_allocations(args: &Vec<String>) -> Result<Stats, <i32 as FromStr>::Err> {
+    pub fn parse_point_allocations(args: &[String]) -> Result<Stats, <i32 as FromStr>::Err> {
         let vit = args[0].parse::<i32>()?;
         let str = args[1].parse::<i32>()?;
         let dex = args[2].parse::<i32>()?;
@@ -34,14 +34,14 @@ impl RPG {
         let args = &command.args;
         let username = &privmsg.tags["display-name"];
 
-        if args.len() >= 1 {
+        if !args.is_empty() {
             // User specified who's info he/she wants.
             let target = command.args[0].to_lowercase();
             match get_twitch_id(&self.connection, &target) {
                 Ok(id) => match load_player(&self.connection, &id) {
                     Ok(Some(player)) => {
                         let dmg = player.get_damage();
-                        return Some(privmsg!(
+                        Some(privmsg!(
                             &privmsg.channel,
                             "{}'s stats: VIT {}, STR {}, DEX {}; HP {}, DMG: {} ({})",
                             target,
@@ -51,29 +51,25 @@ impl RPG {
                             player.state.hp,
                             dmg.0,
                             dmg.1
-                        ));
+                        ))
                     }
-                    Ok(None) => {
-                        return Some(whisper!(
-                            username,
-                            "That user doesn't have a character created"
-                        ));
-                    }
+                    Ok(None) => Some(whisper!(
+                        username,
+                        "That user doesn't have a character created"
+                    )),
                     Err(e) => {
                         error!("{}", e);
-                        return None;
+                        None
                     }
                 },
-                Err(_) => {
-                    return Some(whisper!(username, "No such user found."));
-                }
+                Err(_) => Some(whisper!(username, "No such user found.")),
             }
         } else {
             // User wants own info.
             match load_player(&self.connection, &privmsg.tags["user-id"]) {
                 Ok(Some(player)) => {
                     let dmg = player.get_damage();
-                    return Some(privmsg!(
+                    Some(privmsg!(
                         &privmsg.channel,
                         "{}'s stats: VIT {}, STR {}, DEX {}; HP {}, DMG: {} ({})",
                         username.to_lowercase(),
@@ -83,17 +79,15 @@ impl RPG {
                         player.state.hp,
                         dmg.0,
                         dmg.1
-                    ));
+                    ))
                 }
-                Ok(None) => {
-                    return Some(whisper!(
-                        username,
-                        "That user doesn't have a character created."
-                    ));
-                }
+                Ok(None) => Some(whisper!(
+                    username,
+                    "That user doesn't have a character created."
+                )),
                 Err(e) => {
                     error!("{}", e);
-                    return None;
+                    None
                 }
             }
         }
@@ -134,12 +128,12 @@ impl RPG {
                     let sum = stats.vit + stats.dex + stats.str;
 
                     if sum != MAX_ALLOCATED_POINTS {
-                        return Some(whisper!(
+                        Some(whisper!(
                             username,
                             "You have to allocate {} points, but you've allocated {}.",
                             MAX_ALLOCATED_POINTS,
                             sum
-                        ));
+                        ))
                     } else {
                         save_player(
                             &self.connection,
@@ -147,50 +141,50 @@ impl RPG {
                             &Player::new(stats),
                         );
 
-                        return Some(privmsg!(
+                        Some(privmsg!(
                             &privmsg.channel,
                             "{} successfully created a character! PagChomp",
                             username
-                        ));
+                        ))
                     }
                 }
                 Err(_) => {
-                    return Some(whisper!(
+                    Some(whisper!(
                         username,
                         "Point allocations must be values from 1 to 8."
-                    ));
+                    ))
                 }
             }
         } else {
-            return Some(whisper!(
+            Some(whisper!(
                 username,
                 "Command usage: >>create <vitality> <strength> <dexterity>"
-            ));
+            ))
         }
     }
 
     fn delete_command(
         &mut self,
         privmsg: &PrivateMessage,
-        command: &CommandData,
+        _command: &CommandData,
     ) -> Option<Message> {
         let username = &privmsg.tags["display-name"];
 
         match delete_player(&self.connection, &privmsg.tags["user-id"]) {
             Err(e) => {
                 error!("{}", e);
-                return Some(privmsg!(
+                Some(privmsg!(
                     &privmsg.channel,
                     "{}, failed to delete your character.",
                     username,
-                ));
+                ))
             }
             Ok(_) => {
-                return Some(privmsg!(
+                Some(privmsg!(
                     &privmsg.channel,
                     "{}, your character is deleted.",
                     username
-                ));
+                ))
             }
         }
     }
@@ -254,8 +248,8 @@ impl RPG {
 
     fn inventory_command_info(
         &self,
-        privmsg: &PrivateMessage,
-        command: &CommandData,
+        _privmsg: &PrivateMessage,
+        _command: &CommandData,
     ) -> Option<Message> {
         None
     }
@@ -268,7 +262,7 @@ impl RPG {
         let args = &command.args;
         let username = &privmsg.tags["display-name"];
 
-        if args.len() < 1 {
+        if args.is_empty() {
             return Some(whisper!(
                 username,
                 "Command usage: >>inventory <list< weapons|armor|consumables>>|<info <item_name>>"
@@ -276,13 +270,13 @@ impl RPG {
         }
 
         match args[0].as_ref() {
-            "list" => return self.inventory_command_list(privmsg, command),
-            "info" => return self.inventory_command_info(privmsg, command),
+            "list" => self.inventory_command_list(privmsg, command),
+            "info" => self.inventory_command_info(privmsg, command),
             _ => {
-                return Some(whisper!(
+                Some(whisper!(
                 username,
                 "Command usage: >>inventory <list<all|weapons|armor|consumables>|info <item_name>>"
-            ));
+            ))
             }
         }
     }

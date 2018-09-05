@@ -11,6 +11,6 @@ pub enum JSONIOError {
 }
 
 pub fn load_json_from_file<P: AsRef<Path>, T: DeserializeOwned>(path: P) -> Result<T, JSONIOError> {
-    let file = File::open(path).map_err(|e| JSONIOError::IOError(e))?;
-    serde_json::from_reader(file).map_err(|e| JSONIOError::JSONError(e))
+    let file = File::open(path).map_err(JSONIOError::IOError)?;
+    serde_json::from_reader(file).map_err(JSONIOError::JSONError)
 }

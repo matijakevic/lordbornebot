@@ -1,14 +1,11 @@
 use std::io;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::net::TcpStream;
+use std::sync::mpsc::{channel, Sender};
 use std::thread;
-use std::sync::mpsc::{Sender, Receiver, channel};
 use std::time::Duration;
 
-use twitch::parser::Message;
-
 pub struct Client {
-    stream: TcpStream,
     reader: BufReader<TcpStream>,
     sender: Sender<String>,
 }
@@ -21,30 +18,27 @@ impl Client {
 
         let mut writer = BufWriter::new(stream.try_clone().unwrap());
 
-        thread::spawn(move || {
-            loop {
-                match receiver.recv() {
-                    Ok(message) => {
-                        write!(writer, "{}\r\n", message).unwrap();
-                        writer.flush().unwrap();
-                    },
-                    Err(e) => {
-                        error!("{}", e);
-                    }
+        thread::spawn(move || loop {
+            match receiver.recv() {
+                Ok(message) => {
+                    writeln!(writer, "{}\r", message).unwrap();
+                    writer.flush().unwrap();
                 }
-
-                thread::sleep(Duration::from_millis(interval));
+                Err(e) => {
+                    error!("{}", e);
+                }
             }
+
+            thread::sleep(Duration::from_millis(interval));
         });
 
         Client {
             reader: BufReader::new(stream.try_clone().unwrap()),
-            stream,
             sender,
         }
     }
 
-    pub fn initialize(&mut self, oauth: &str, nick: &str) {
+    pub fn initialize(&mut self, oauth: &str, _nick: &str) {
         self.send_line(&format!("PASS {}\r\n", oauth));
         self.send_line(&format!("NICK {}\r\n", oauth));
         self.send_line("CAP REQ :twitch.tv/tags\r\n");

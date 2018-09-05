@@ -2,7 +2,6 @@ use data::points::{get_points, set_points};
 use modules::Module;
 use rand::random;
 use rusqlite::Connection;
-use std::path::Path;
 use twitch::parser::{CommandData, Message, PrivateMessage};
 
 pub struct Gamble {
@@ -11,15 +10,13 @@ pub struct Gamble {
 
 impl Gamble {
     pub fn new(connection: Connection) -> Gamble {
-        Gamble {
-            connection,
-        }
+        Gamble { connection }
     }
 
     fn gamble_command(&self, privmsg: &PrivateMessage, command: &CommandData) -> Option<Message> {
         let args = &command.args;
 
-        if args.len() < 1 {
+        if args.is_empty() {
             return None;
         }
 
@@ -74,18 +71,18 @@ impl Gamble {
             };
 
             match set_points(&self.connection, &privmsg.tags["user-id"], new_points) {
-                Ok(_) => return Some(message),
+                Ok(_) => Some(message),
                 Err(e) => {
                     warn!("{}", e);
-                    return None;
+                    None
                 }
             }
         } else {
-            return Some(whisper!(
+            Some(whisper!(
                 &privmsg.tags["display-name"],
                 "{}, you don't have enough points for this roulette.",
                 &privmsg.tags["display-name"]
-            ));
+            ))
         }
     }
 }
@@ -95,9 +92,9 @@ impl Module for Gamble {
         match message {
             Message::Command(privmsg, command) => match command.name.as_ref() {
                 "gamble" | "roulette" => self.gamble_command(&privmsg, &command),
-                _ => return None,
+                _ => None,
             },
-            _ => return None,
+            _ => None,
         }
     }
 }

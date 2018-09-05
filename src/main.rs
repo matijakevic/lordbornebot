@@ -14,28 +14,26 @@ extern crate env_logger;
 #[macro_use]
 mod twitch;
 mod data;
+mod middleware;
 mod modules;
 mod util;
-mod middleware;
 
-use bincode::{deserialize_from, serialize_into};
 use data::users::check_user;
+use middleware::filter::Filter;
+use middleware::Middleware;
 use modules::afk::AFK;
 use modules::gamble::Gamble;
 use modules::points::Points;
-use modules::rpg::RPG;
 use modules::shapes::Shapes;
 use modules::Module;
 use rusqlite::Connection;
 use std::env::var_os;
 use std::ffi::OsString;
+use std::fs::File;
 use std::path::PathBuf;
 use twitch::client::Client;
 use twitch::parser::{Message, Parser};
 use util::load_json_from_file;
-use middleware::Middleware;
-use middleware::filter::Filter;
-use std::fs::File;
 
 #[derive(Deserialize)]
 struct Config {
@@ -58,7 +56,6 @@ fn forward_to_middlewares(middlewares: &mut Vec<Box<Middleware>>, message: &mut 
     true
 }
 
-
 fn forward_to_modules(modules: &mut Vec<Box<Module>>, message: &Message, client: &mut Client) {
     for module in modules {
         if let Some(out_message) = module.handle_message(&message) {
@@ -74,7 +71,7 @@ fn create_db_connection(path: &PathBuf) -> Connection {
     Connection::open(path).unwrap()
 }
 
-fn init_modules(config: &Config, connection: &Connection, modules: &mut Vec<Box<Module>>) {
+fn init_modules(config: &Config, _connection: &Connection, modules: &mut Vec<Box<Module>>) {
     let points_module = Points::new(create_db_connection(&config.database_path));
     let gamble_module = Gamble::new(create_db_connection(&config.database_path));
     let shapes_module = Shapes::new(create_db_connection(&config.database_path));
@@ -103,12 +100,12 @@ fn init_middleware(config: &Config, middlewares: &mut Vec<Box<Middleware>>) {
 
 fn load_config() -> Config {
     let path = match var_os("BOT_CONFIG_PATH") {
-        Some(path) => OsString::from(path),
+        Some(path) => path,
         None => OsString::from("config.json"),
     };
 
     match load_json_from_file(path) {
-        Ok(config) => return config,
+        Ok(config) => config,
         Err(_) => panic!("Could not process the config file."),
     }
 }
@@ -132,7 +129,7 @@ fn main() {
     client.initialize(&config.oauth, &config.nickname);
     for channel in &config.channels {
         client.join_channel(&channel);
-    };
+    }
 
     loop {
         if let Ok(line) = client.read_line() {
