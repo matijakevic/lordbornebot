@@ -1,47 +1,7 @@
 use regex::Regex;
 use std::collections::HashMap;
 
-pub enum Message {
-    Unknown,
-    Private(PrivateMessage),
-    Command(PrivateMessage, CommandData),
-    Ping,
-}
-
-pub struct PrivateMessage {
-    pub tags: HashMap<String, String>,
-    pub channel: String,
-    pub sender: String,
-    pub text: String,
-}
-
-#[macro_export]
-macro_rules! privmsg {
-    ($channel:expr, $fmt:expr) => ($crate::twitch::parser::Message::Private($crate::twitch::parser::PrivateMessage {
-        tags: $crate::std::collections::HashMap::new(),
-        sender: String::new(),
-        text: $fmt.to_string(),
-        channel: $channel.to_string()
-    }));
-    ($channel:expr, $fmt:expr, $($arg:tt)*) => ($crate::twitch::parser::Message::Private($crate::twitch::parser::PrivateMessage {
-        tags: $crate::std::collections::HashMap::new(),
-        sender: String::new(),
-        text: format!($fmt, $($arg)*),
-        channel: $channel.to_string()
-    }));
-}
-
-#[macro_export]
-macro_rules! whisper {
-    ($user:expr, $fmt:expr) => (privmsg!("jtv", concat!("/w {} ", $fmt), $user));
-    ($user:expr, $fmt:expr, $($arg:tt)*) => (privmsg!("jtv", concat!("/w {} ", $fmt), $user, $($arg)*));
-}
-
-pub struct CommandData {
-    pub name: String,
-    pub raw_args: String,
-    pub args: Vec<String>,
-}
+use lordbornebot_core::{CommandData, Message, PrivateMessage};
 
 pub struct Parser<'a> {
     command_prefix: &'a str,
@@ -139,4 +99,8 @@ impl<'a> Parser<'a> {
             _ => Err("Cannot encode this message"),
         }
     }
+}
+
+pub trait Module {
+    fn handle_message(&mut self, message: &Message) -> Option<Message>;
 }

@@ -1,8 +1,7 @@
 use data::points::{get_points, set_points};
-use modules::Module;
+use lordbornebot_core::{CommandData, Message, Module, PrivateMessage};
 use rusqlite::Connection;
 use std::collections::HashMap;
-use twitch::parser::Message;
 
 struct ShapeData {
     stage: i32,

@@ -1,4 +1,4 @@
-use twitch::parser::Message;
+use lordbornebot_core::Message;
 
 pub mod filter;
 

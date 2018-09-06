@@ -1,7 +1,6 @@
 use data::points::{get_points, get_points_by_username};
-use modules::Module;
+use lordbornebot_core::{CommandData, Message, Module, PrivateMessage};
 use rusqlite::Connection;
-use twitch::parser::{CommandData, Message, PrivateMessage};
 
 pub struct Points {
     connection: Connection,
@@ -32,22 +31,18 @@ impl Points {
             ))
         } else {
             match get_points_by_username(&self.connection, &args[0]) {
-                Ok(points) => {
-                    Some(privmsg!(
-                        &privmsg.channel,
-                        "{}, {} has {} points.",
-                        &privmsg.tags["display-name"],
-                        args[0],
-                        points
-                    ))
-                }
-                Err(_) => {
-                    Some(privmsg!(
-                        &privmsg.channel,
-                        "{}, that user doesn't exist yet in the database.",
-                        &privmsg.tags["display-name"]
-                    ))
-                }
+                Ok(points) => Some(privmsg!(
+                    &privmsg.channel,
+                    "{}, {} has {} points.",
+                    &privmsg.tags["display-name"],
+                    args[0],
+                    points
+                )),
+                Err(_) => Some(privmsg!(
+                    &privmsg.channel,
+                    "{}, that user doesn't exist yet in the database.",
+                    &privmsg.tags["display-name"]
+                )),
             }
         }
     }

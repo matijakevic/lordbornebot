@@ -1,8 +1,7 @@
 use data::points::{get_points, set_points};
-use modules::Module;
+use lordbornebot_core::{CommandData, Message, Module, PrivateMessage};
 use rand::random;
 use rusqlite::Connection;
-use twitch::parser::{CommandData, Message, PrivateMessage};
 
 pub struct Gamble {
     connection: Connection,

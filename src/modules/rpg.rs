@@ -1,10 +1,9 @@
 use data::rpg::*;
-use modules::Module;
 use rusqlite::Connection;
 
+use lordbornebot_core::{CommandData, Message, Module, PrivateMessage};
 use std::path::Path;
 use std::str::FromStr;
-use twitch::parser::{CommandData, Message, PrivateMessage};
 
 const MAX_ALLOCATED_POINTS: i32 = 10;
 
@@ -148,12 +147,10 @@ impl RPG {
                         ))
                     }
                 }
-                Err(_) => {
-                    Some(whisper!(
-                        username,
-                        "Point allocations must be values from 1 to 8."
-                    ))
-                }
+                Err(_) => Some(whisper!(
+                    username,
+                    "Point allocations must be values from 1 to 8."
+                )),
             }
         } else {
             Some(whisper!(
@@ -179,13 +176,11 @@ impl RPG {
                     username,
                 ))
             }
-            Ok(_) => {
-                Some(privmsg!(
-                    &privmsg.channel,
-                    "{}, your character is deleted.",
-                    username
-                ))
-            }
+            Ok(_) => Some(privmsg!(
+                &privmsg.channel,
+                "{}, your character is deleted.",
+                username
+            )),
         }
     }
 
@@ -272,12 +267,10 @@ impl RPG {
         match args[0].as_ref() {
             "list" => self.inventory_command_list(privmsg, command),
             "info" => self.inventory_command_info(privmsg, command),
-            _ => {
-                Some(whisper!(
+            _ => Some(whisper!(
                 username,
                 "Command usage: >>inventory <list<all|weapons|armor|consumables>|info <item_name>>"
-            ))
-            }
+            )),
         }
     }
 }

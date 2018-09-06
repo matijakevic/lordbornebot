@@ -1,8 +1,7 @@
 use chrono::{Duration, Utc};
 use data::afk::*;
-use modules::Module;
+use lordbornebot_core::{CommandData, Message, Module, PrivateMessage};
 use rusqlite::{Connection, Error};
-use twitch::parser::{CommandData, Message, PrivateMessage};
 
 pub struct AFK {
     connection: Connection,
@@ -162,7 +161,11 @@ impl Module for AFK {
                 }
             }
             Message::Private(privmsg) => self.check_if_back(&privmsg),
-            _ => None
+            _ => None,
         }
     }
+}
+
+pub trait ModuleInterface {
+    fn handle_message(&mut self, message: &Message) -> Option<Message>;
 }

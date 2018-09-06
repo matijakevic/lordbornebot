@@ -10,29 +10,33 @@ extern crate serde_derive;
 #[macro_use]
 extern crate log;
 extern crate env_logger;
-
+extern crate libloading;
 #[macro_use]
-mod twitch;
+extern crate lordbornebot_core;
+
 mod data;
 mod middleware;
 mod modules;
+mod twitch;
 mod util;
 
 use data::users::check_user;
+use libloading::Library;
+use lordbornebot_core::{CommandData, Message, Module, PrivateMessage};
 use middleware::filter::Filter;
 use middleware::Middleware;
 use modules::afk::AFK;
 use modules::gamble::Gamble;
+use modules::load_module;
 use modules::points::Points;
 use modules::shapes::Shapes;
-use modules::Module;
 use rusqlite::Connection;
 use std::env::var_os;
 use std::ffi::OsString;
 use std::fs::File;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use twitch::client::Client;
-use twitch::parser::{Message, Parser};
+use twitch::parser::Parser;
 use util::load_json_from_file;
 
 #[derive(Deserialize)]
@@ -67,22 +71,33 @@ fn forward_to_modules(modules: &mut Vec<Box<Module>>, message: &Message, client:
     }
 }
 
-fn create_db_connection(path: &PathBuf) -> Connection {
+fn create_db_connection(path: &Path) -> Connection {
     Connection::open(path).unwrap()
 }
 
-fn init_modules(config: &Config, _connection: &Connection, modules: &mut Vec<Box<Module>>) {
+fn init_modules(
+    libraries: &mut Vec<Library>,
+    config: &Config,
+    _connection: &Connection,
+    modules: &mut Vec<Box<Module>>,
+) {
     let points_module = Points::new(create_db_connection(&config.database_path));
     let gamble_module = Gamble::new(create_db_connection(&config.database_path));
     let shapes_module = Shapes::new(create_db_connection(&config.database_path));
     //let rpg_module = RPG::new(&config.database_path);
     let afk_module = AFK::new(create_db_connection(&config.database_path));
 
+    let ping_module = load_module(
+        libraries,
+        "C:/Users/Matija/Projects/test_module/target/debug/test_module.dll",
+    );
+
     modules.push(Box::new(points_module));
     modules.push(Box::new(gamble_module));
     modules.push(Box::new(shapes_module));
     //modules.push(Box::new(rpg_module));
     modules.push(Box::new(afk_module));
+    modules.push(ping_module);
 }
 
 fn load_banphrases(path: &PathBuf) -> Result<Vec<String>, std::io::Error> {
@@ -113,6 +128,8 @@ fn load_config() -> Config {
 fn main() {
     env_logger::init();
 
+    let mut libraries = Vec::new();
+
     let config = load_config();
 
     let connection = Connection::open(&config.database_path).unwrap();
@@ -124,7 +141,7 @@ fn main() {
     let mut modules: Vec<Box<Module>> = Vec::new();
 
     init_middleware(&config, &mut middlewares);
-    init_modules(&config, &connection, &mut modules);
+    init_modules(&mut libraries, &config, &connection, &mut modules);
 
     client.initialize(&config.oauth, &config.nickname);
     for channel in &config.channels {
