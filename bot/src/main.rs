@@ -87,17 +87,11 @@ fn init_modules(
     //let rpg_module = RPG::new(&config.database_path);
     let afk_module = AFK::new(create_db_connection(&config.database_path));
 
-    let ping_module = load_module(
-        libraries,
-        "C:/Users/Matija/Projects/test_module/target/debug/test_module.dll",
-    );
-
     modules.push(Box::new(points_module));
     modules.push(Box::new(gamble_module));
     modules.push(Box::new(shapes_module));
     //modules.push(Box::new(rpg_module));
     modules.push(Box::new(afk_module));
-    modules.push(ping_module);
 }
 
 fn load_banphrases(path: &PathBuf) -> Result<Vec<String>, std::io::Error> {

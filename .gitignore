@@ -1,6 +1,8 @@
-/target
+core/target
+bot/target
 **/*.rs.bk
-config.json
-data.db
-Cargo.lock
-banphrases.json
+bot/config.json
+bot/data.db
+bot/Cargo.lock
+bot/banphrases.json
+core/Cargo.lock
