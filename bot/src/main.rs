@@ -20,7 +20,7 @@ mod modules;
 mod twitch;
 mod util;
 
-use data::users::check_user;
+use data::*;
 use libloading::Library;
 use lordbornebot_core::Config;
 use lordbornebot_core::{CommandData, Message, Module, PrivateMessage};
