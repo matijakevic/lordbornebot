@@ -25,12 +25,9 @@ use libloading::Library;
 use lordbornebot_core::{CommandData, Message, Module, PrivateMessage};
 use middleware::filter::Filter;
 use middleware::Middleware;
-use modules::afk::AFK;
-use modules::gamble::Gamble;
 use modules::load_module;
-use modules::points::Points;
-use modules::shapes::Shapes;
 use rusqlite::Connection;
+use std::collections::HashMap;
 use std::env::var_os;
 use std::ffi::OsString;
 use std::fs::File;
@@ -46,6 +43,7 @@ struct Config {
     command_prefix: String,
     database_path: PathBuf,
     banphrases_path: PathBuf,
+    modules_path: PathBuf,
     channels: Vec<String>,
     message_interval: u64,
 }
@@ -60,8 +58,12 @@ fn forward_to_middlewares(middlewares: &mut Vec<Box<Middleware>>, message: &mut 
     true
 }
 
-fn forward_to_modules(modules: &mut Vec<Box<Module>>, message: &Message, client: &mut Client) {
-    for module in modules {
+fn forward_to_modules(
+    modules: &mut HashMap<String, Box<Module>>,
+    message: &Message,
+    client: &mut Client,
+) {
+    for (_, module) in modules {
         if let Some(out_message) = module.handle_message(&message) {
             match Parser::encode_response(&out_message) {
                 Ok(raw_message) => client.send_line(&raw_message),
@@ -76,22 +78,12 @@ fn create_db_connection(path: &Path) -> Connection {
 }
 
 fn init_modules(
-    libraries: &mut Vec<Library>,
+    libraries: &mut HashMap<String, Library>,
+    modules: &mut HashMap<String, Box<Module>>,
     config: &Config,
     _connection: &Connection,
-    modules: &mut Vec<Box<Module>>,
 ) {
-    let points_module = Points::new(create_db_connection(&config.database_path));
-    let gamble_module = Gamble::new(create_db_connection(&config.database_path));
-    let shapes_module = Shapes::new(create_db_connection(&config.database_path));
-    //let rpg_module = RPG::new(&config.database_path);
-    let afk_module = AFK::new(create_db_connection(&config.database_path));
-
-    modules.push(Box::new(points_module));
-    modules.push(Box::new(gamble_module));
-    modules.push(Box::new(shapes_module));
-    //modules.push(Box::new(rpg_module));
-    modules.push(Box::new(afk_module));
+    //load_module(libraries, modules, &config.modules_path, "ping_module").unwrap();
 }
 
 fn load_banphrases(path: &PathBuf) -> Result<Vec<String>, std::io::Error> {
@@ -122,8 +114,6 @@ fn load_config() -> Config {
 fn main() {
     env_logger::init();
 
-    let mut libraries = Vec::new();
-
     let config = load_config();
 
     let connection = Connection::open(&config.database_path).unwrap();
@@ -132,10 +122,11 @@ fn main() {
     let parser = Parser::new(&config.command_prefix);
 
     let mut middlewares: Vec<Box<Middleware>> = Vec::new();
-    let mut modules: Vec<Box<Module>> = Vec::new();
+    let mut libraries: HashMap<String, Library> = HashMap::new();
+    let mut modules: HashMap<String, Box<Module>> = HashMap::new();
 
     init_middleware(&config, &mut middlewares);
-    init_modules(&mut libraries, &config, &connection, &mut modules);
+    init_modules(&mut libraries, &mut modules, &config, &connection);
 
     client.initialize(&config.oauth, &config.nickname);
     for channel in &config.channels {
@@ -159,6 +150,32 @@ fn main() {
                             ).unwrap();
                         }
                         Message::Ping => client.send_line("PONG :tmi.twitch.tv"),
+                        _ => {}
+                    }
+
+                    match &message {
+                        Message::Command(privmsg, command) => {
+                            if !command.args.is_empty() {
+                                let module_name = &command.args[0];
+                                match command.name.as_ref() {
+                                    "load" => {
+                                        load_module(
+                                            &mut libraries,
+                                            &mut modules,
+                                            &config.modules_path,
+                                            module_name,
+                                        ).unwrap();
+                                    }
+                                    "unload" => {
+                                        if modules.contains_key(module_name) {
+                                            modules.remove(module_name);
+                                            libraries.remove(module_name);
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
                         _ => {}
                     }
                 }
