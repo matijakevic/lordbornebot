@@ -22,6 +22,7 @@ mod util;
 
 use data::users::check_user;
 use libloading::Library;
+use lordbornebot_core::Config;
 use lordbornebot_core::{CommandData, Message, Module, PrivateMessage};
 use middleware::filter::Filter;
 use middleware::Middleware;
@@ -35,18 +36,6 @@ use std::path::{Path, PathBuf};
 use twitch::client::Client;
 use twitch::parser::Parser;
 use util::load_json_from_file;
-
-#[derive(Deserialize)]
-struct Config {
-    oauth: String,
-    nickname: String,
-    command_prefix: String,
-    database_path: PathBuf,
-    banphrases_path: PathBuf,
-    modules_path: PathBuf,
-    channels: Vec<String>,
-    message_interval: u64,
-}
 
 fn forward_to_middlewares(middlewares: &mut Vec<Box<Middleware>>, message: &mut Message) -> bool {
     for middleware in middlewares {
@@ -83,7 +72,9 @@ fn init_modules(
     config: &Config,
     _connection: &Connection,
 ) {
-    //load_module(libraries, modules, &config.modules_path, "ping_module").unwrap();
+    for module in &config.modules {
+        load_module(libraries, modules, &config, module).unwrap();
+    }
 }
 
 fn load_banphrases(path: &PathBuf) -> Result<Vec<String>, std::io::Error> {
@@ -162,7 +153,7 @@ fn main() {
                                         load_module(
                                             &mut libraries,
                                             &mut modules,
-                                            &config.modules_path,
+                                            &config,
                                             module_name,
                                         ).unwrap();
                                     }

@@ -1,4 +1,10 @@
+extern crate serde;
+extern crate serde_json;
+#[macro_use]
+extern crate serde_derive;
+
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 #[macro_export]
 macro_rules! privmsg {
@@ -40,6 +46,19 @@ pub struct CommandData {
     pub name: String,
     pub raw_args: String,
     pub args: Vec<String>,
+}
+
+#[derive(Deserialize)]
+pub struct Config {
+    pub oauth: String,
+    pub nickname: String,
+    pub command_prefix: String,
+    pub database_path: PathBuf,
+    pub banphrases_path: PathBuf,
+    pub modules_path: PathBuf,
+    pub channels: Vec<String>,
+    pub message_interval: u64,
+    pub modules: Vec<String>,
 }
 
 pub trait Module {

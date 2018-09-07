@@ -1,0 +1,6 @@
+config.json
+data.db
+banphrases.json
+/target
+**/*.rs.bk
+Cargo.lock

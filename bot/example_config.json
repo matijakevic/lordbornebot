@@ -3,9 +3,13 @@
     "nickname": "<bot's nickname>",
     "command_prefix": "<command prefix>",
     "database_path": "<SQLite database file path>",
-    "banphrases_path": "<banphrase path>",
+    "banphrases_path": "<banphrases path>",
     "message_interval": "<message interval>",
     "modules_path": "<modules path>",
+    "modules": [
+        "<preloaded module 1>",
+        "<preloaded module 2>"
+    ],
     "channels": [
         "<channel1>",
         "<channel2>"
