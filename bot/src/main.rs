@@ -156,11 +156,13 @@ fn main() {
                                             &config,
                                             module_name,
                                         ).unwrap();
+                                        info!("Loaded module {}", module_name);
                                     }
                                     "unload" => {
                                         if modules.contains_key(module_name) {
                                             modules.remove(module_name);
                                             libraries.remove(module_name);
+                                            info!("Unloaded module {}", module_name);
                                         }
                                     }
                                     _ => {}
