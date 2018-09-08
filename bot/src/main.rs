@@ -150,13 +150,19 @@ fn main() {
                                 let module_name = &command.args[0];
                                 match command.name.as_ref() {
                                     "load" => {
-                                        load_module(
+                                        match load_module(
                                             &mut libraries,
                                             &mut modules,
                                             &config,
                                             module_name,
-                                        ).unwrap();
-                                        info!("Loaded module {}", module_name);
+                                        ) {
+                                            Ok(()) => {
+                                                info!("Loaded module {}", module_name);
+                                            }
+                                            Err(e) => {
+                                                err!("{}", e);
+                                            }
+                                        };
                                     }
                                     "unload" => {
                                         if modules.contains_key(module_name) {
