@@ -160,7 +160,7 @@ fn main() {
                                                 info!("Loaded module {}", module_name);
                                             }
                                             Err(e) => {
-                                                err!("{}", e);
+                                                error!("{}", e);
                                             }
                                         };
                                     }
