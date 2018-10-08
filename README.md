@@ -3,7 +3,7 @@
 A Twitch chat bot written in Rust
 
 ## Infrastructure
-- lordbornebot_core crate - a library contains all types, macros, utilities and definitions that are shared between the bot and modules
+- lordbornebot_core crate - a library that contains all types, macros, utilities and definitions that are shared between the bot and modules
 - lordbornebot create - a binary that runs the actual IRC Client, loads and unloads the modules, initializes middleware etc. (basically glues everything together)
 
 **IRC Client** (lordbornebot::twitch::client) ⇒ **decoding** (lordbornebot::twitch::parser) ⇒ **lordbornebot_core::Message** ⇒ **middleware** ⇒ **modules** ⇒ **encoding** (lordbornebot::twitch::parser) ⇒ **lordbornebot_core::Message** ⇒ **IRC Client Message Queue** (lordbornebot::twitch::client)
@@ -41,7 +41,7 @@ You still need to build them and copy the \<module name\> dynamic libraries into
 - AFK module - utility module for notifying other chatters that some chatter is AFK.
 - Points - a module for querying user's points.
 - Gamble - a module for points gambling.
-- Shape module - a module for receiving points on successfully created shape in chat.
+- Shape module - a module for receiving points on a successfully created shape in chat.
 - RPG module (WIP, stalled) - a large game module for MMORPGish dungeon experience.
 
 ## Middleware system
